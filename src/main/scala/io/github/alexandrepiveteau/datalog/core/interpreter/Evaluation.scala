@@ -135,8 +135,8 @@ private def evalIncremental[T](predicate: PredicateWithArity, idb: RulesDatabase
   IRRelDistinct(result)
 
 // TODO : Document this.
-private def naiveEval[T](idb: RulesDatabase[T], base: Database, result: Database)
-                        (using context: Context[T]): IROp[T] =
+def naiveEval[T](idb: RulesDatabase[T], base: Database, result: Database)
+                (using context: Context[T]): IROp[T] =
   val copy = Database("Copy")
   val sequence = mutable.ListBuffer[IROp[T]]()
   idb.iterator.foreach { predicate =>
@@ -153,8 +153,8 @@ private def naiveEval[T](idb: RulesDatabase[T], base: Database, result: Database
   )
 
 // TODO : Document this.
-private def semiNaiveEval[T](idb: RulesDatabase[T], base: Database, result: Database)
-                            (using context: Context[T]): IROp[T] =
+def semiNaiveEval[T](idb: RulesDatabase[T], base: Database, result: Database)
+                    (using context: Context[T]): IROp[T] =
   val delta = Database("Delta")
   val copy = Database("Copy")
   val outer = mutable.ListBuffer[IROp[T]]()

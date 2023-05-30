@@ -1,5 +1,6 @@
 package io.github.alexandrepiveteau.datalog.core
 
+import io.github.alexandrepiveteau.datalog.core.interpreter.{Algorithm, DatalogProgramBuilder, Naive}
 import io.github.alexandrepiveteau.datalog.core.rule.*
 
 // TODO : Document this.
@@ -22,3 +23,10 @@ trait ProgramBuilder[T]:
 
   // TODO : Document this.
   def build(): Program[T]
+
+// TODO : Document this.
+object ProgramBuilder:
+
+  // TODO : Document this.
+  def apply[T](domain: Domain[T], algorithm: Algorithm = Naive): ProgramBuilder[T] =
+    DatalogProgramBuilder(domain, algorithm)
