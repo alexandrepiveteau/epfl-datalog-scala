@@ -108,23 +108,8 @@ extension[T] (r: Relation[T])
       }
       result.values.foreach(add)
     }
-//  return buildRelation(projection.size) {
-//    // A map of the values in the same set to the values in the projection, for each row. Multiple
-//    // rows will eventually map to the same value, and the aggregate function will be applied to
-//    // merge them.
-//    val result = mutableMapOf<Fact<T>, Fact<T>>()
-//    distinct().forEach { atom ->
-//      val key = same.map { atom[it.index] }
-//      val existing = result[key]
-//      val value = projection.map { atom.value(it, indices, aggregate, domain) }
-//      val updated =
-//          if (existing == null) value
-//          else with(domain) { merge(existing, value, aggregate, projection) }
-//      result[key] = updated
-//    }
-//    result.forEach { (_, value) -> yield(value) }
-//  }
 
+// TODO : Document this.
 extension[T] (iterable: Iterable[Relation[T]])
 
   // TODO : Document this.
