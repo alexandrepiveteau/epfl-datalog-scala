@@ -1,4 +1,6 @@
-package io.github.alexandrepiveteau.graphs
+package io.github.alexandrepiveteau.graphs.builder
+
+import io.github.alexandrepiveteau.graphs.Vertex
 
 trait MutableGraphScope {
 

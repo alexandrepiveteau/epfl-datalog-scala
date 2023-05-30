@@ -1,6 +1,7 @@
-package io.github.alexandrepiveteau.graphs
+package io.github.alexandrepiveteau.graphs.builder
 
 import io.github.alexandrepiveteau.graphs.internal.graphs.AdjacencyListDirectedGraph
+import io.github.alexandrepiveteau.graphs.*
 
 trait DirectedGraphBuilder extends GraphBuilder, MutableDirectedGraphScope:
   override def toGraph(): DirectedGraph
