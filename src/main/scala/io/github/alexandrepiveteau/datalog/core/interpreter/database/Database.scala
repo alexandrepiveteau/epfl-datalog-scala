@@ -1,6 +1,7 @@
 package io.github.alexandrepiveteau.datalog.core.interpreter.database
 
-import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.{Relation, distinct, union}
+import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.{TupleSet, given}
+import io.github.alexandrepiveteau.datalog.core.interpreter.ir.Relation
 import io.github.alexandrepiveteau.datalog.core.rule.{Fact, Rule}
 
 import scala.annotation.targetName
@@ -52,7 +53,7 @@ trait FactsDatabase[T]:
   def iterator: Iterator[PredicateWithArity]
 
   // TODO : Document this.
-  def apply(predicate: PredicateWithArity): Relation[T]
+  def apply(predicate: PredicateWithArity): TupleSet[T]
 
   // TODO : Document this.
   @targetName("plus")
@@ -77,7 +78,7 @@ trait MutableFactsDatabase[T] extends FactsDatabase[T]:
   def +=(other: FactsDatabase[T]): Unit
 
   // TODO : Document this.
-  def update(predicate: PredicateWithArity, relation: Relation[T]): Unit
+  def update(predicate: PredicateWithArity, relation: TupleSet[T]): Unit
 
 // TODO : Document this.
 object MutableFactsDatabase:
@@ -96,7 +97,7 @@ object MutableFactsDatabase:
         map.getOrElseUpdate(predicate, mutable.Set.empty) += fact
 
       override def build(): FactsDatabase[T] =
-        val values = map.view.map { case (k, v) => (k, Relation(k.arity, v.toSet)) }
+        val values = map.view.map { case (k, v) => (k, TupleSet(k.arity, v.toSet)) }
         MapMutableFactsDatabase[T](mutable.Map.from(values))
 
 // TODO : Document this.
@@ -111,7 +112,7 @@ trait FactsDatabaseBuilder[T] extends FactsDatabaseBuilderScope[T]:
   // TODO : Document this.
   def build(): FactsDatabase[T]
 
-private case class MapMutableFactsDatabase[T](map: mutable.Map[PredicateWithArity, Relation[T]]) extends MutableFactsDatabase[T]:
+private case class MapMutableFactsDatabase[T](map: mutable.Map[PredicateWithArity, TupleSet[T]]) extends MutableFactsDatabase[T]:
 
   @targetName("plusAssign")
   override def +=(other: FactsDatabase[T]): Unit =
@@ -120,11 +121,11 @@ private case class MapMutableFactsDatabase[T](map: mutable.Map[PredicateWithArit
       update(predicate, updated)
     }
 
-  override def update(predicate: PredicateWithArity, relation: Relation[T]): Unit =
+  override def update(predicate: PredicateWithArity, relation: TupleSet[T]): Unit =
     map.update(predicate, relation)
 
-  override def apply(predicate: PredicateWithArity): Relation[T] =
-    map.getOrElse(predicate, Relation.empty(predicate.arity))
+  override def apply(predicate: PredicateWithArity): TupleSet[T] =
+    map.getOrElse(predicate, summon[Relation[TupleSet]].empty[T](predicate.arity))
 
   override def iterator: Iterator[PredicateWithArity] =
     map.keys.iterator

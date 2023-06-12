@@ -1,118 +1,134 @@
 package io.github.alexandrepiveteau.datalog.core.interpreter.ir
 
-import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.*
+import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.{AggregationColumn, Column, Index, TupleSet, given}
 import io.github.alexandrepiveteau.datalog.core.interpreter.database.{PredicateWithArity, StorageManager, nonEmpty}
-import io.github.alexandrepiveteau.datalog.core.rule.Value
+import io.github.alexandrepiveteau.datalog.core.rule.{Predicate, Value}
 import io.github.alexandrepiveteau.datalog.core.{AggregationFunction, Domain}
 
-// TODO : Document this.
-sealed trait IROp[T]
+/**
+ * An [[IROp]] is an operation that can be performed in the abstract interpreter. All programs are solved as a
+ * sequence of calls to some [[IROp]]s, which are then interpreted.
+ *
+ * The result of the application of [[IROp]]s is given when the [[compute()]] operation is called.
+ *
+ * @tparam O the type of the operations, which work on constants and return values.
+ * @tparam R the type of the relations.
+ */
+trait IROp[O[_, _], R[_] : Relation]:
 
-// TODO : Document this.
-case class IRSequence[T](ops: List[IROp[T]]) extends IROp[T]
+  /**
+   * Sequences multiple [[IROp2]] together.
+   *
+   * @param ops the operations to sequence.
+   * @tparam T the type of the operations.
+   * @return a new [[IROp2]] which sequences the given operations.
+   */
+  def sequence[C, T](ops: List[O[C, T]]): O[C, Unit]
 
-// TODO : Document this.
-case class IRStore[T](database: Database, predicate: PredicateWithArity, relation: IRRelOp[T]) extends IROp[T]
+  /**
+   * Scans the given database for the given predicate, and returns the relation.
+   *
+   * @param database  the database to scan.
+   * @param predicate the predicate to scan.
+   * @tparam T the type of the constants in the relation.
+   * @return a new [[R]] which has loaded the relation from the database.
+   */
+  def scan[C](database: Database, predicate: PredicateWithArity): O[C, R[C]]
 
-// TODO : Document this.
-case class IRDoWhileNotEqual[T](op: IROp[T], first: Database, second: Database) extends IROp[T]
+  /**
+   * Stores a relation in the given database, replacing the previous value.
+   *
+   * @param database  the database to store the relation in.
+   * @param predicate the predicate to store the relation at.
+   * @param relation  the relation to store.
+   * @tparam T the type of the constants in the relation.
+   * @return a new [[IROp2]] which stores the relation in the database.
+   */
+  def store[C](database: Database, predicate: PredicateWithArity, relation: O[C, R[C]]): O[C, Unit]
 
-// TODO : Document this.
-case class IRDoWhileNotEmpty[T](op: IROp[T], database: Database) extends IROp[T]
+  /**
+   * Performs the operation until the two databases are equal.
+   *
+   * @param op     the operation to perform.
+   * @param first  the first database to load the relation from.
+   * @param second the second database to load the relation from.
+   * @tparam T the type of the constants in the relation.
+   * @return a new [[IROp2]] which loads the relation from the database.
+   */
+  def doWhileNotEqual[C, T](op: O[C, T], first: Database, second: Database): O[C, Unit]
 
-// TODO : Document this.
-case class IRMergeAndClear[T]() extends IROp[T]
+  /**
+   * Performs the operation until the database is empty.
+   *
+   * @param op       the operation to perform.
+   * @param database the database to load the relation from.
+   * @tparam T the type of the constants in the relation.
+   * @return a new [[IROp2]] which loads the relation from the database.
+   */
+  def doWhileNonEmpty[C, T](op: O[C, T], database: Database): O[C, Unit]
 
-// TODO : Document this.
-sealed trait IRRelOp[T] extends IROp[T]:
-  val arity: Int
+  // TODO : Provide finer-grained operations for the following.
 
-// TODO : Document this.
-case class IRRelEmpty[T](arity: Int) extends IRRelOp[T]
+  /**
+   * Merges the [[Database.Result]] into [[Database.Base]], and clears the [[Database.Result]].
+   *
+   * @return a new [[IROp2]] which merges the result into the base.
+   */
+  def mergeAndClear[C](): O[C, Unit]
 
-// TODO : Document this.
-case class IRRelDomain[T](arity: Int, values: Iterable[Value[T]]) extends IRRelOp[T]
+  // Monadic support of computations in the IR.
+  def lift[A, B](a: B): O[A, B]
 
-// TODO : Document this.
-case class IRRelScan[T](database: Database, predicate: PredicateWithArity) extends IRRelOp[T]:
-  override val arity: Int = predicate.arity
+  extension[S, B] (op: O[S, B])
+    def map[C](f: B => C): O[S, C]
+    def flatMap[C](f: B => O[S, C]): O[S, C]
 
-// TODO : Document this.
-case class IRRelSelect[T](relation: IRRelOp[T], selection: Set[Set[Column[T]]]) extends IRRelOp[T]:
-  override val arity: Int = relation.arity
+  // Monad transformers in the IR.
+  extension[S, B] (ops: List[O[S, B]])
+    def toOp: O[S, List[B]]
 
-// TODO : Document this.
-case class IRRelJoin[T](relations: List[IRRelOp[T]]) extends IRRelOp[T]:
-  override val arity: Int = relations.map(_.arity).sum
-
-// TODO : Document this.
-case class IRRelUnion[T](first: IRRelOp[T], second: IRRelOp[T]) extends IRRelOp[T]:
-  override val arity: Int = first.arity
-
-// TODO : Document this.
-case class IRRelDistinct[T](relation: IRRelOp[T]) extends IRRelOp[T]:
-  override val arity: Int = relation.arity
-
-// TODO : Document this.
-case class IRRelMinus[T](relation: IRRelOp[T], removed: IRRelOp[T]) extends IRRelOp[T]:
-  override val arity: Int = relation.arity
-
-// TODO : Document this.
-case class IRRelProject[T](relation: IRRelOp[T], columns: List[Column[T]]) extends IRRelOp[T]:
-  override val arity: Int = columns.size
-
-// TODO : Document this.
-case class IRRelAggregate[T](relation: IRRelOp[T],
-                             projection: List[AggregationColumn[T]],
-                             same: Set[Index],
-                             domain: Domain[T],
-                             aggregate: AggregationFunction,
-                             indices: Set[Index],
-                            ) extends IRRelOp[T]:
-  override val arity: Int = projection.size
 
 // INTERPRETATION OF THE IR
 
-// TODO : Document this.
-extension[T] (op: IROp[T])
+type IROpInterpreter[C, R] = StorageManager[C] => R
 
-  // TODO : Document this.
-  def compute(storage: StorageManager[T]): Unit =
-    op match
-      case IRSequence(ops) => ops.foreach(_.compute(storage))
-      case IRStore(database, predicate, relation) =>
-        storage
-          .database(database)
-          .update(predicate, relation.rel(using storage))
-      case IRDoWhileNotEqual(op, first, second) =>
-        while
-          op.compute(storage)
-          storage.database(first) != storage.database(second)
-        do ()
-      case IRDoWhileNotEmpty(op, database) =>
-        while
-          op.compute(storage)
-          storage.database(database).nonEmpty
-        do ()
-      case IRMergeAndClear() =>
-        storage.database(Database.Base) += storage.database(Database.Result)
-        storage.removeAll(Set(Database.Base))
-      case _: IRRelOp[_] => ()
+given IROp[IROpInterpreter, TupleSet] with
 
-// TODO : Document this.
-extension[T] (op: IRRelOp[T])
+  override def sequence[C, T](ops: List[IROpInterpreter[C, T]]): IROpInterpreter[C, Unit] = s =>
+    ops.foreach(_.apply(s))
 
-  // TODO : Document this.
-  def rel(using storage: StorageManager[T]): Relation[T] =
-    op match
-      case IRRelAggregate(relation, projection, same, domain, aggregate, indices) =>
-        relation.rel.aggregate(projection, same, aggregate, indices)(using domain)
-      case IRRelDistinct(relation) => relation.rel.distinct()
-      case IRRelDomain(arity, values) => Relation.domain(arity, values.toSet)
-      case IRRelEmpty(arity) => Relation.empty(arity)
-      case IRRelJoin(relations) => relations.map(_.rel).join()
-      case IRRelMinus(relation, removed) => relation.rel.minus(removed.rel)
-      case IRRelProject(relation, columns) => relation.rel.project(columns)
-      case IRRelScan(database, predicate) => storage.database(database)(predicate)
-      case IRRelSelect(relation, selection) => relation.rel.select(selection)
-      case IRRelUnion(first, second) => first.rel.union(second.rel)
+  override def scan[C](database: Database, predicate: PredicateWithArity): IROpInterpreter[C, TupleSet[C]] = s =>
+    s.database(database).apply(predicate)
+
+  override def store[C](database: Database,
+                        predicate: PredicateWithArity,
+                        relation: IROpInterpreter[C, TupleSet[C]]): IROpInterpreter[C, Unit] = s =>
+    s.database(database).update(predicate, relation.apply(s))
+
+  override def doWhileNotEqual[C, T](op: IROpInterpreter[C, T],
+                                     first: Database,
+                                     second: Database): IROpInterpreter[C, Unit] = s =>
+    while
+      op.apply(s)
+      s.database(first) != s.database(second)
+    do ()
+
+  override def doWhileNonEmpty[C, T](op: IROpInterpreter[C, T],
+                                     database: Database): IROpInterpreter[C, Unit] = s =>
+    while
+      op.apply(s)
+      s.database(database).nonEmpty
+    do ()
+
+  override def mergeAndClear[C](): IROpInterpreter[C, Unit] = s =>
+    s.database(Database.Base) += s.database(Database.Result)
+    s.removeAll(Set(Database.Base))
+
+  override def lift[A, B](a: B): IROpInterpreter[A, B] = _ => a
+
+  extension[S, B] (op: IROpInterpreter[S, B])
+    def map[C](f: B => C): IROpInterpreter[S, C] = s => f(op(s))
+    def flatMap[C](f: B => IROpInterpreter[S, C]): IROpInterpreter[S, C] = s => f(op(s))(s)
+
+  extension[S, B] (ops: List[IROpInterpreter[S, B]])
+    def toOp: IROpInterpreter[S, List[B]] = s => ops.map(_.apply(s))

@@ -2,7 +2,7 @@ package io.github.alexandrepiveteau.datalog.core.interpreter
 
 import io.github.alexandrepiveteau.datalog.core.NoStratificationException
 import io.github.alexandrepiveteau.datalog.core.interpreter.database.{PredicateWithArity, RulesDatabase}
-import io.github.alexandrepiveteau.datalog.core.interpreter.ir.{Database, IRMergeAndClear, IROp, IRSequence}
+import io.github.alexandrepiveteau.datalog.core.interpreter.ir.*
 import io.github.alexandrepiveteau.datalog.core.rule.{AggregationRule, CombinationRule, Rule}
 import io.github.alexandrepiveteau.graphs.algorithms.{stronglyConnectedComponents, topologicalSort}
 import io.github.alexandrepiveteau.graphs.builder.{addArc, addVertex, buildDirectedGraph}
@@ -91,16 +91,17 @@ private def hasCycle[T](strata: List[Set[PredicateWithArity]], rules: RulesDatab
 
 // TODO : Implement this.
 // TODO : Document this.
-def stratifiedEval[T](target: PredicateWithArity, idb: RulesDatabase[T],
-                      base: Database, result: Database)
-                     (evalStrata: (RulesDatabase[T], Database, Database) => IROp[T]): IROp[T] =
+def stratifiedEval[O[_, _], R[_] : Relation, T: Context](target: PredicateWithArity, idb: RulesDatabase[T],
+                                                         base: Database, result: Database)
+                                                        (evalStrata: (RulesDatabase[T], Database, Database) => O[T, Unit])
+                                                        (using op: IROp[O, R]): O[T, Unit] =
   val order = stratify(dependencies(idb, target), idb)
   if hasCycle(order, idb) then
     throw NoStratificationException()
 
-  IRSequence(
+  op.sequence(
     order.flatMap(stratum =>
       val rules = idb.filter(stratum)
-      List(evalStrata(rules, base, result), IRMergeAndClear())
+      List(evalStrata(rules, base, result), op.mergeAndClear())
     )
   )

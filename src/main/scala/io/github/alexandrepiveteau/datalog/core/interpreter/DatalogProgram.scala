@@ -1,9 +1,9 @@
 package io.github.alexandrepiveteau.datalog.core.interpreter
 
-import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.foreach
+import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.{TupleSet, given}
 import io.github.alexandrepiveteau.datalog.core.interpreter.database.{FactsDatabase, PredicateWithArity, RulesDatabase, StorageManager}
 import io.github.alexandrepiveteau.datalog.core.interpreter.ir.Database.{Base, Result}
-import io.github.alexandrepiveteau.datalog.core.interpreter.ir.{Database, compute}
+import io.github.alexandrepiveteau.datalog.core.interpreter.ir.{*, given}
 import io.github.alexandrepiveteau.datalog.core.rule.*
 import io.github.alexandrepiveteau.datalog.core.{Domain, Program}
 
@@ -53,10 +53,14 @@ class DatalogProgram[T](val domain: Domain[T],
   override def solve(predicate: Predicate, arity: Int): Iterable[Fact[T]] =
     val (idb, edb) = partition(rules)
     val target = PredicateWithArity(predicate, arity)
-    val context = ctx(idb, edb)
+
+    given Context[T] = ctx(idb, edb)
+
     val storage = StorageManager[T]()
     storage.database(Base) += edb
-    val ir = stratifiedEval(target, idb, Base, Result)((i, e, r) => algorithm.evaluate(i, e, r)(using context))
-    ir.compute(storage)
+
+    val eval = stratifiedEval[IROpInterpreter, TupleSet, T](target, idb, Base, Result)((i, e, r) => algorithm.evaluate(i, e, r))
+    eval(storage)
+
     val result = storage.database(Base)
     result(target).tuples

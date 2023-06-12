@@ -1,8 +1,7 @@
 package io.github.alexandrepiveteau.datalog
 
 import io.github.alexandrepiveteau.datalog.core.domain
-import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.{Relation, union}
-import io.github.alexandrepiveteau.datalog.core.interpreter.test
+import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.{TupleSet, union}
 import io.github.alexandrepiveteau.datalog.core.rule.Predicate
 import io.github.alexandrepiveteau.datalog.parser.DatalogProgramParser
 import io.github.alexandrepiveteau.datalog.parser.core.{parse, parser}
