@@ -3,6 +3,7 @@ package io.github.alexandrepiveteau.datalog.core.rule
 import io.github.alexandrepiveteau.datalog.core.AggregationFunction
 
 // TODO : Document this.
+// TODO : Rename this to Term.
 sealed trait Atom[+T]
 
 // TODO : Document this.
@@ -15,6 +16,7 @@ case class Variable(value: Any) extends Atom[Nothing]
 case class Predicate(value: Any)
 
 // TODO : Document this.
+// TODO : Rename this to Atom?
 sealed trait Literal[+T]:
   val predicate: Predicate
   val atoms: List[Atom[T]]

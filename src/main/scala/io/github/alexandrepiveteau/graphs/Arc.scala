@@ -1,5 +1,7 @@
 package io.github.alexandrepiveteau.graphs
 
+import scala.annotation.targetName
+
 type Arc = (Vertex, Vertex)
 
 extension (arc: Arc)
@@ -12,4 +14,5 @@ extension (arc: Arc)
     val (from, to) = arc
     (to, from)
 
+@targetName("arcTo")
 infix def ->(from: Vertex, to: Vertex): Arc = (from, to)

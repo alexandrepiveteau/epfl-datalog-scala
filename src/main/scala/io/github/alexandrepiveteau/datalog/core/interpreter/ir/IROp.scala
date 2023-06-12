@@ -87,7 +87,7 @@ extension[T] (op: IROp[T])
       case IRDoWhileNotEqual(op, first, second) =>
         while
           op.compute(storage)
-          storage.database(first) == storage.database(second)
+          storage.database(first) != storage.database(second)
         do ()
       case IRDoWhileNotEmpty(op, database) =>
         while

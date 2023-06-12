@@ -14,11 +14,12 @@ trait GraphBuilder extends MutableGraphScope:
 abstract class MutableListGraphBuilder extends GraphBuilder:
 
   // TODO : Document this.
-  protected val neighbors = mutable.ListBuffer[mutable.ListBuffer[Int]]()
+  protected val neighbors: mutable.ListBuffer[mutable.ListBuffer[Int]] = mutable.ListBuffer[mutable.ListBuffer[Int]]()
 
   override def addVertex(): Vertex =
+    val id = neighbors.size
     neighbors += mutable.ListBuffer[Int]()
-    Vertex(neighbors.size)
+    Vertex(id)
 
   // TODO : Document this.
   def checkLink(u: Vertex, v: Vertex): Unit =

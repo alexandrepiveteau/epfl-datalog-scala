@@ -6,6 +6,7 @@ import io.github.alexandrepiveteau.datalog.core.interpreter.ir.*
 import io.github.alexandrepiveteau.datalog.core.rule.*
 
 import scala.collection.mutable
+import scala.collection.immutable
 
 // TODO : Document this.
 private def variableIndices[T](rule: List[Atom[T]]): Set[List[Int]] =
@@ -48,6 +49,64 @@ private def evalRule[T](rule: Rule[T], relations: List[IRRelOp[T]])
   rule match
     case rule: CombinationRule[T] => evalCombinationRule(rule, relations)
     case rule: AggregationRule[T] => evalAggregationRule(rule, relations.head)
+
+/*case class Symbol2(name: String)
+
+def symbols(count: Int): List[Symbol2] = ???
+
+sealed trait Projection[+T]
+
+case class Constant[+T](value: T) extends Projection[T]
+
+case class Variable3(symbol: Symbol2) extends Projection[Nothing]
+
+sealed trait Column2
+
+case object Skipped extends Column2
+
+case class Variable4(symbol: Symbol2) extends Column2
+
+sealed trait Join[R[_]]:
+  val projection: List[Column2]
+  case class Standard[T](relation: R[T], projection: List[Column2]) extends Join[R]
+  case class Anti[T](relation: R[T], projection: List[Column2]) extends Join[R]
+
+private trait Relation2[R[_]]:
+  def scan[T](database: Database, predicate: PredicateWithArity): R[T]
+  def spju[T](projection: List[Projection[T]], relations: List[Join[R]]): R[T]
+  extension[T] (op: R[T])
+    def arity: Int
+    def union(other: R[T]): R[T] =
+      val s = symbols(op.arity + other.arity)
+      val (a, b) = s.splitAt(op.arity)
+      spju(s.map(Variable3.apply), List(Join.Standard(op, a.map(Variable4.apply)), Join.Standard(other, b.map(Variable4.apply))))
+    def iterator: scala.collection.immutable.Iterable[T]
+
+private trait Relation[R[_]]:
+  def empty[T](arity: Int): R[T]
+
+  def domain[T](domain: Set[T], arity: Int): R[T]
+
+  def join[T](operations: List[R[T]]): R[T]
+
+  def scan[T](database: Database, predicate: PredicateWithArity): R[T]
+
+  extension[T] (op: R[T])
+    def union(other: R[T]): R[T]
+    def join(other: R[T]): R[T]
+    def project(columns: List[Column[T]]): R[T]
+    def select(selection: Set[Set[Column[T]]]): R[T]
+    def iterator: scala.collection.immutable.Iterable[T]
+
+private def evalCombinationRule2[R[_] : Relation, T](rule: CombinationRule[T], relations: List[R[T]])
+                                                    (using Context[T]): R[T] =
+  if rule.body.size != relations.size then throw IllegalArgumentException("Invalid number of relations.")
+  val negated = relations.map(identity) // TODO : Introduce negation here.
+  val concat = rule.body.flatMap(_.atoms.toList)
+  summon[Relation[R]].join[T](negated)
+    .select(selection(concat))
+    .project(projection(rule.head.atoms, concat))
+*/
 
 // TODO : Document this.
 private def evalCombinationRule[T](rule: CombinationRule[T], relations: List[IRRelOp[T]])
@@ -157,8 +216,8 @@ def semiNaiveEval[T](idb: RulesDatabase[T], base: Database, result: Database)
                     (using context: Context[T]): IROp[T] =
   val delta = Database("Delta")
   val copy = Database("Copy")
-  val outer = mutable.ListBuffer[IROp[T]]()
-  val inner = mutable.ListBuffer[IROp[T]]()
+  val outer = immutable.List.newBuilder[IROp[T]]
+  val inner = immutable.List.newBuilder[IROp[T]]
 
   idb.iterator.foreach { predicate =>
     val res = eval(predicate, idb, base, Database.Empty)
@@ -179,8 +238,8 @@ def semiNaiveEval[T](idb: RulesDatabase[T], base: Database, result: Database)
   }
 
   outer += IRDoWhileNotEmpty(
-    IRSequence(inner.toList),
+    IRSequence(inner.result()),
     delta
   )
 
-  IRSequence(outer.toList)
+  IRSequence(outer.result())
