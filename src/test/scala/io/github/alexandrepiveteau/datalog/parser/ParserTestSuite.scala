@@ -16,7 +16,7 @@ class ParserTestSuite extends AnyFunSuite:
     )
 
     val parser = for
-      r <- DatalogRuleParser(Int.parser())
+      r <- DatalogRuleParser(Int.parser)
       _ <- end()
     yield r
 
@@ -39,7 +39,7 @@ class ParserTestSuite extends AnyFunSuite:
       )
 
     val parser = for
-      r <- DatalogRuleParser(Int.parser())
+      r <- DatalogRuleParser(Int.parser)
       _ <- end()
     yield r
     parser.parse(rule) shouldEqual Some(expected)
