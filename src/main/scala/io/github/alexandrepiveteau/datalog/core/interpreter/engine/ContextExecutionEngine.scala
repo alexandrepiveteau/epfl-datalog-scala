@@ -9,10 +9,10 @@ import io.github.alexandrepiveteau.datalog.core.rule.*
 import scala.collection.mutable
 
 // TODO : Document this.
-private def constants[T](atoms: List[Atom[T]]): Set[Value[T]] =
+private def constants[T](terms: List[Term[T]]): Set[Value[T]] =
   val values = mutable.Set.empty[Value[T]]
-  for atom <- atoms do
-    atom match
+  for term <- terms do
+    term match
       case value: Value[T] => values += value
       case _: Variable => ()
   values.toSet
@@ -20,9 +20,9 @@ private def constants[T](atoms: List[Atom[T]]): Set[Value[T]] =
 // TODO : Document this.
 private def constants[T](rule: Rule[T]): Set[Value[T]] =
   val values = mutable.Set.empty[Value[T]]
-  values ++= constants(rule.head.atoms)
+  values ++= constants(rule.head.terms)
   for clause <- rule.body do
-    values ++= constants(clause.atoms)
+    values ++= constants(clause.terms)
   values.toSet
 
 // TODO : Document this.
@@ -49,7 +49,7 @@ private def constants[T](rules: RulesDatabase[T], facts: FactsDatabase[T]): Set[
 abstract class ContextExecutionEngine[T] extends ExecutionEngine[T]:
 
   private def ctx(idb: RulesDatabase[T], edb: FactsDatabase[T], domain: Domain[T]): Context[T] =
-    Context(atoms = constants(idb, edb), domain = domain)
+    Context(terms = constants(idb, edb), domain = domain)
 
   override def solve(predicate: Predicate, arity: Int, algorithm: Algorithm)
                     (using domain: Domain[T], rules: Set[Rule[T]]): Iterable[Fact[T]] =

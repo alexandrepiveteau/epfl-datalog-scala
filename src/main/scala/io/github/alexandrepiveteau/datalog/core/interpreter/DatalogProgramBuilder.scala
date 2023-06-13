@@ -32,7 +32,7 @@ class DatalogProgramBuilder[T](private val domain: Domain[T],
     rule.body
       .filter(it => !it.negated)
       .foreach { clause =>
-        val filtered = clause.atoms
+        val filtered = clause.terms
           .filter(a => a.isInstanceOf[Variable])
           .map(a => a.asInstanceOf[Variable])
         variables.addAll(filtered)
@@ -44,16 +44,16 @@ class DatalogProgramBuilder[T](private val domain: Domain[T],
 
   // TODO : Document this.
   private def requireGrounding(rule: Rule[T]): Unit =
-    val head = rule.head.atoms.filter(_.isInstanceOf[Variable]).map(_.asInstanceOf[Variable])
-    val body = rule.body.flatMap(_.atoms).filter(_.isInstanceOf[Variable]).map(_.asInstanceOf[Variable])
+    val head = rule.head.terms.filter(_.isInstanceOf[Variable]).map(_.asInstanceOf[Variable])
+    val body = rule.body.flatMap(_.terms).filter(_.isInstanceOf[Variable]).map(_.asInstanceOf[Variable])
     val l = limited(rule)
     for variable <- head ++ body do
       if !l.contains(variable) then throw NotGroundedException()
 
-  override def rule(predicate: Predicate, atoms: List[Atom[T]], block: RuleBuilder[T] ?=> Unit): Unit =
+  override def rule(predicate: Predicate, terms: List[Term[T]], block: RuleBuilder[T] ?=> Unit): Unit =
     val context = DatalogRuleBuilder[T]
     block(using context)
-    rule(context.toRule(predicate, atoms))
+    rule(context.toRule(predicate, terms))
 
   override def rule(rule: Rule[T]): Unit =
     requireGrounding(rule)

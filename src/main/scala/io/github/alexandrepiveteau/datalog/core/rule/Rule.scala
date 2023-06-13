@@ -4,29 +4,28 @@ import io.github.alexandrepiveteau.datalog.core.AggregationFunction
 
 // TODO : Document this.
 // TODO : Rename this to Term.
-sealed trait Atom[+T]
+sealed trait Term[+T]
 
 // TODO : Document this.
-case class Value[+T](value: T) extends Atom[T]
+case class Value[+T](value: T) extends Term[T]
 
 // TODO : Document this.
-case class Variable(value: String) extends Atom[Nothing]
+case class Variable(value: String) extends Term[Nothing]
 
 // TODO : Document this.
 case class Predicate(value: String)
 
 // TODO : Document this.
-// TODO : Rename this to Atom?
 sealed trait Literal[+T]:
   val predicate: Predicate
-  val atoms: List[Atom[T]]
-  val arity: Int = atoms.size
+  val terms: List[Term[T]]
+  val arity: Int = terms.size
 
 // TODO : Document this.
-case class HeadLiteral[+T](predicate: Predicate, atoms: List[Atom[T]]) extends Literal[T]
+case class HeadLiteral[+T](predicate: Predicate, terms: List[Term[T]]) extends Literal[T]
 
 // TODO : Document this.
-case class BodyLiteral[+T](predicate: Predicate, atoms: List[Atom[T]], negated: Boolean) extends Literal[T]
+case class BodyLiteral[+T](predicate: Predicate, terms: List[Term[T]], negated: Boolean) extends Literal[T]
 
 // TODO : Document this.
 sealed trait Rule[+T]:

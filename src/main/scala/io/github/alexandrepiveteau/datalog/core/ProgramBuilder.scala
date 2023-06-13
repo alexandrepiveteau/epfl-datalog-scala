@@ -17,7 +17,7 @@ trait ProgramBuilder[T]:
   def fact(predicate: Predicate, fact: Fact[T]): Unit = rule(predicate, fact, ())
 
   // TODO : Document this.
-  def rule(predicate: Predicate, atoms: List[Atom[T]], block: RuleBuilder[T] ?=> Unit): Unit
+  def rule(predicate: Predicate, terms: List[Term[T]], block: RuleBuilder[T] ?=> Unit): Unit
 
   // TODO : Document this.
   def rule(rule: Rule[T]): Unit

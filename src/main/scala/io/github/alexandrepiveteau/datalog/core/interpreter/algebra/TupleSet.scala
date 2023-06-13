@@ -43,10 +43,10 @@ object TupleSet:
                   (using domain: Domain[T]): TupleSet[T] =
     buildRelation(projection.size) {
       val result = mutable.Map.empty[Set[Value[T]], Fact[T]]
-      TupleSet.distinct(relation).foreach { atom =>
-        val key = same.map { it => atom(it.index) }
+      TupleSet.distinct(relation).foreach { term =>
+        val key = same.map { it => term(it.index) }
         val existing = result.get(key)
-        val value = projection.map { it => atom.value(it, indices, aggregate) }
+        val value = projection.map { it => term.value(it, indices, aggregate) }
         val updated =
           existing
             .map(it => merge(it, value, aggregate, projection))

@@ -6,14 +6,14 @@ import io.github.alexandrepiveteau.datalog.core.rule.{Fact, Value}
 // TODO : Document this.
 sealed trait AggregationFunction:
 
-  def transform[T](indices: Set[Index], atoms: Fact[T])(using domain: Domain[T]): Value[T]
+  def transform[T](indices: Set[Index], terms: Fact[T])(using domain: Domain[T]): Value[T]
 
   def combine[T](a: Value[T], b: Value[T])(using domain: Domain[T]): Value[T]
 
 // TODO : Document this.
 case object Count extends AggregationFunction:
 
-  override def transform[T](indices: Set[Index], atoms: Fact[T])(using domain: Domain[T]): Value[T] =
+  override def transform[T](indices: Set[Index], terms: Fact[T])(using domain: Domain[T]): Value[T] =
     domain.unit
 
   override def combine[T](a: Value[T], b: Value[T])(using domain: Domain[T]): Value[T] =
@@ -22,8 +22,8 @@ case object Count extends AggregationFunction:
 // TODO : Document this.
 case object Sum extends AggregationFunction:
 
-  override def transform[T](indices: Set[Index], atoms: Fact[T])(using domain: Domain[T]): Value[T] =
-    atoms.zipWithIndex
+  override def transform[T](indices: Set[Index], terms: Fact[T])(using domain: Domain[T]): Value[T] =
+    terms.zipWithIndex
       .filter((_, i) => indices.contains(Index(i)))
       .map(_._1)
       .reduce(domain.sum)
@@ -34,8 +34,8 @@ case object Sum extends AggregationFunction:
 // TODO : Document this.
 case object Min extends AggregationFunction:
 
-  override def transform[T](indices: Set[Index], atoms: Fact[T])(using domain: Domain[T]): Value[T] =
-    atoms.zipWithIndex
+  override def transform[T](indices: Set[Index], terms: Fact[T])(using domain: Domain[T]): Value[T] =
+    terms.zipWithIndex
       .filter((_, i) => indices.contains(Index(i)))
       .map(_._1)
       .reduce(domain.min)
@@ -46,8 +46,8 @@ case object Min extends AggregationFunction:
 // TODO : Document this.
 case object Max extends AggregationFunction:
 
-  override def transform[T](indices: Set[Index], atoms: Fact[T])(using domain: Domain[T]): Value[T] =
-    atoms.zipWithIndex
+  override def transform[T](indices: Set[Index], terms: Fact[T])(using domain: Domain[T]): Value[T] =
+    terms.zipWithIndex
       .filter((_, i) => indices.contains(Index(i)))
       .map(_._1)
       .reduce(domain.max)

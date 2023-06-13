@@ -8,10 +8,10 @@ import io.github.alexandrepiveteau.datalog.core.rule.*
 import scala.collection.{immutable, mutable}
 
 // TODO : Document this.
-private def variableIndices[T](rule: List[Atom[T]]): Set[List[Int]] =
+private def variableIndices[T](rule: List[Term[T]]): Set[List[Int]] =
   val variables = mutable.Map[Variable, mutable.ListBuffer[Int]]()
-  rule.zipWithIndex.foreach { (atom, index) =>
-    atom match {
+  rule.zipWithIndex.foreach { (term, index) =>
+    term match {
       case variable: Variable => variables.getOrElseUpdate(variable, mutable.ListBuffer()) += index
       case Value(_) => ()
     }
@@ -19,20 +19,20 @@ private def variableIndices[T](rule: List[Atom[T]]): Set[List[Int]] =
   variables.values.map(_.toList).toSet
 
 // TODO : Document this.
-private def constantIndices[T](rule: List[Atom[T]]): List[(Int, Value[T])] =
+private def constantIndices[T](rule: List[Term[T]]): List[(Int, Value[T])] =
   rule.zipWithIndex
-    .filter((atom, _) => atom.isInstanceOf[Value[T]])
-    .map((atom, index) => (index, atom.asInstanceOf[Value[T]]))
+    .filter((term, _) => term.isInstanceOf[Value[T]])
+    .map((term, index) => (index, term.asInstanceOf[Value[T]]))
 
 // TODO : Document this.
-private def projection[T](predicate: List[Atom[T]], rule: List[Atom[T]]): List[Column[T]] =
+private def projection[T](predicate: List[Term[T]], rule: List[Term[T]]): List[Column[T]] =
   predicate.map {
-    case atom: Value[T] => Constant(atom)
-    case atom: Variable => Index(rule.indexOf(atom)) // TODO : Check because it's indexOfFirst in Kotlin
+    case term: Value[T] => Constant(term)
+    case term: Variable => Index(rule.indexOf(term)) // TODO : Check because it's indexOfFirst in Kotlin
   }
 
 // TODO : Document this.
-private def selection[T](rule: List[Atom[T]]): Set[Set[Column[T]]] =
+private def selection[T](rule: List[Term[T]]): Set[Set[Column[T]]] =
   val result = mutable.Set[Set[Column[T]]]()
   val variables = variableIndices(rule)
   variables.foreach { variable => result.add(variable.map(Index.apply).toSet) }
@@ -60,10 +60,10 @@ private def evalCombinationRule[O[_, _], R[_], T: Context](rule: CombinationRule
   // 5. Project the rows to the correct indices, and add constants to the projection.
   val list = relations.zipWithIndex
     .map((r, idx) => if rule.body(idx).negated then negated(rule.body(idx).arity, r) else r)
-  val concat = rule.body.flatMap(_.atoms.toList)
+  val concat = rule.body.flatMap(_.terms.toList)
   op.join(list)
     .select(selection(concat))
-    .project(projection(rule.head.atoms, concat))
+    .project(projection(rule.head.terms, concat))
 
 // TODO : Document this.
 private def evalAggregationRule[O[_, _], R[_], T](rule: AggregationRule[T], relation: O[T, R[T]])
@@ -71,14 +71,14 @@ private def evalAggregationRule[O[_, _], R[_], T](rule: AggregationRule[T], rela
   // 1. Negate the relation if the rule is negated.
   // 2. Perform the aggregation.
   val rel = if rule.clause.negated then negated(rule.clause.arity, relation) else relation
-  val projection = rule.head.atoms.map {
-    case atom: Value[T] => AggregationColumnColumn(Constant(atom))
-    case atom: Variable =>
-      if atom == rule.aggregate.result then AggregationColumnAggregate
-      else AggregationColumnColumn(Index(rule.clause.atoms.indexOf(atom)))
+  val projection = rule.head.terms.map {
+    case term: Value[T] => AggregationColumnColumn(Constant(term))
+    case term: Variable =>
+      if term == rule.aggregate.result then AggregationColumnAggregate
+      else AggregationColumnColumn(Index(rule.clause.terms.indexOf(term)))
   }
-  val same = rule.aggregate.same.toSet.map(it => Index(rule.clause.atoms.indexOf(it)))
-  val indices = rule.aggregate.columns.toSet.map(it => Index(rule.clause.atoms.indexOf(it)))
+  val same = rule.aggregate.same.toSet.map(it => Index(rule.clause.terms.indexOf(it)))
+  val indices = rule.aggregate.columns.toSet.map(it => Index(rule.clause.terms.indexOf(it)))
   rel.aggregate(projection, same, rule.aggregate.agg, indices)(using context.domain)
 
 // TODO : Document this.

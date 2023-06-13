@@ -41,12 +41,12 @@ case class DatalogRuleParser[+T](constant: Parser[T]) extends Parser[Rule[T]]:
   private val variable = name map Variable.apply
   private val variables: Parser[List[Variable]] = separated(variable, comma)
   private val value = constant map Value.apply
-  private val atom = variable | value
-  private val atoms: Parser[List[Atom[T]]] = separated(atom, comma)
+  private val term = variable | value
+  private val terms: Parser[List[Term[T]]] = separated(term, comma)
   private val literal = for
     p <- predicate
     _ <- lpar
-    a <- atoms
+    a <- terms
     _ <- rpar
   yield (p, a)
   private val headLiteral = literal.map(HeadLiteral.apply)

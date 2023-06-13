@@ -8,7 +8,7 @@ import scala.collection.mutable
 // TODO : Document this.
 private def requireFact[T](rule: CombinationRule[T]): Fact[T] =
   if (rule.body.nonEmpty) throw new IllegalArgumentException("Rule is not be a fact.")
-  val result = rule.head.atoms.filter(it => it.isInstanceOf[Value[T]])
+  val result = rule.head.terms.filter(it => it.isInstanceOf[Value[T]])
   val mapped = result.map(it => it.asInstanceOf[Value[T]])
   if (mapped.size != rule.head.arity) throw new IllegalArgumentException("This fact has some unsafe variables.")
   mapped
