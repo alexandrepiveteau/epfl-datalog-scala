@@ -131,12 +131,7 @@ given StagedIROp: IROp[StagedOp, TupleSet] with
 def compile[C: Type : ToExpr, O: Type : ToExpr](op: StagedOp[C, O])
                                                (using quotes: Quotes, s: Expr[StorageManager[C]], d: Expr[Domain[C]]): Expr[O] =
   op match
-    case SequenceOp(ops) =>
-      ops.map(compile(_)).foldLeft('{ () })((acc, next) =>
-        '{
-          $acc
-          $next
-        })
+    case SequenceOp(ops) => Expr.block[Unit](ops.map(compile(_)), '{ () })
     case ScanOp(database, predicate) =>
       '{ ${ s }.database(${ Expr(database) }).apply(${ Expr(predicate) }) }
     case StoreOp(database, predicate, relation) =>
