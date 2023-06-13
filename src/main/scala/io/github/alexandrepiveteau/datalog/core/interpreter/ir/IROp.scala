@@ -5,6 +5,8 @@ import io.github.alexandrepiveteau.datalog.core.interpreter.database.{PredicateW
 import io.github.alexandrepiveteau.datalog.core.rule.{Predicate, Value}
 import io.github.alexandrepiveteau.datalog.core.{AggregationFunction, Domain}
 
+import scala.quoted.*
+
 /**
  * An [[IROp]] is an operation that can be performed in the abstract interpreter. All programs are solved as a
  * sequence of calls to some [[IROp]]s, which are then interpreted.
@@ -14,7 +16,7 @@ import io.github.alexandrepiveteau.datalog.core.{AggregationFunction, Domain}
  * @tparam O the type of the operations, which work on constants and return values.
  * @tparam R the type of the relations.
  */
-trait IROp[O[_, _], R[_] : Relation]:
+trait IROp[O[_, _], R[_]]:
 
   /**
    * Sequences multiple [[IROp2]] together.
@@ -23,7 +25,7 @@ trait IROp[O[_, _], R[_] : Relation]:
    * @tparam T the type of the operations.
    * @return a new [[IROp2]] which sequences the given operations.
    */
-  def sequence[C, T](ops: List[O[C, T]]): O[C, Unit]
+  def sequence[C](ops: List[O[C, Unit]]): O[C, Unit]
 
   /**
    * Scans the given database for the given predicate, and returns the relation.
@@ -55,7 +57,7 @@ trait IROp[O[_, _], R[_] : Relation]:
    * @tparam T the type of the constants in the relation.
    * @return a new [[IROp2]] which loads the relation from the database.
    */
-  def doWhileNotEqual[C, T](op: O[C, T], first: Database, second: Database): O[C, Unit]
+  def doWhileNotEqual[C](op: O[C, Unit], first: Database, second: Database): O[C, Unit]
 
   /**
    * Performs the operation until the database is empty.
@@ -65,7 +67,7 @@ trait IROp[O[_, _], R[_] : Relation]:
    * @tparam T the type of the constants in the relation.
    * @return a new [[IROp2]] which loads the relation from the database.
    */
-  def doWhileNonEmpty[C, T](op: O[C, T], database: Database): O[C, Unit]
+  def doWhileNonEmpty[C](op: O[C, Unit], database: Database): O[C, Unit]
 
   // TODO : Provide finer-grained operations for the following.
 
@@ -76,59 +78,33 @@ trait IROp[O[_, _], R[_] : Relation]:
    */
   def mergeAndClear[C](): O[C, Unit]
 
-  // Monadic support of computations in the IR.
-  def lift[A, B](a: B): O[A, B]
+  // TODO : It is actually a mistake to have Relation. We must have all ops in this interface so the operations such as
+  //        union do not need a Monad to be implemented in an IROp context.
+  //        This is also how we get rid of lifting etc. and we can implement a compiled interpreter.
 
-  extension[S, B] (op: O[S, B])
-    def map[C](f: B => C): O[S, C]
-    def flatMap[C](f: B => O[S, C]): O[S, C]
+  def empty[C](arity: Int): O[C, R[C]]
 
-  // Monad transformers in the IR.
-  extension[S, B] (ops: List[O[S, B]])
-    def toOp: O[S, List[B]]
+  def domain[C](arity: Int, values: Set[Value[C]]): O[C, R[C]]
 
+  def join[C](relations: List[O[C, R[C]]]): O[C, R[C]]
 
-// INTERPRETATION OF THE IR
+  extension[C] (relation: O[C, R[C]])
 
-type IROpInterpreter[C, R] = StorageManager[C] => R
+    def arity: O[C, Int]
 
-given IROp[IROpInterpreter, TupleSet] with
+    def aggregate(projection: List[AggregationColumn[C]],
+                  same: Set[Index],
+                  aggregate: AggregationFunction,
+                  indices: Set[Index],
+                 )(using domain: Domain[C]): O[C, R[C]]
 
-  override def sequence[C, T](ops: List[IROpInterpreter[C, T]]): IROpInterpreter[C, Unit] = s =>
-    ops.foreach(_.apply(s))
+    def minus(other: O[C, R[C]]): O[C, R[C]]
 
-  override def scan[C](database: Database, predicate: PredicateWithArity): IROpInterpreter[C, TupleSet[C]] = s =>
-    s.database(database).apply(predicate)
+    def union(other: O[C, R[C]]): O[C, R[C]]
 
-  override def store[C](database: Database,
-                        predicate: PredicateWithArity,
-                        relation: IROpInterpreter[C, TupleSet[C]]): IROpInterpreter[C, Unit] = s =>
-    s.database(database).update(predicate, relation.apply(s))
+    def distinct(): O[C, R[C]]
 
-  override def doWhileNotEqual[C, T](op: IROpInterpreter[C, T],
-                                     first: Database,
-                                     second: Database): IROpInterpreter[C, Unit] = s =>
-    while
-      op.apply(s)
-      s.database(first) != s.database(second)
-    do ()
+    def project(projection: List[Column[C]]): O[C, R[C]]
 
-  override def doWhileNonEmpty[C, T](op: IROpInterpreter[C, T],
-                                     database: Database): IROpInterpreter[C, Unit] = s =>
-    while
-      op.apply(s)
-      s.database(database).nonEmpty
-    do ()
+    def select(selection: Set[Set[Column[C]]]): O[C, R[C]]
 
-  override def mergeAndClear[C](): IROpInterpreter[C, Unit] = s =>
-    s.database(Database.Base) += s.database(Database.Result)
-    s.removeAll(Set(Database.Base))
-
-  override def lift[A, B](a: B): IROpInterpreter[A, B] = _ => a
-
-  extension[S, B] (op: IROpInterpreter[S, B])
-    def map[C](f: B => C): IROpInterpreter[S, C] = s => f(op(s))
-    def flatMap[C](f: B => IROpInterpreter[S, C]): IROpInterpreter[S, C] = s => f(op(s))(s)
-
-  extension[S, B] (ops: List[IROpInterpreter[S, B]])
-    def toOp: IROpInterpreter[S, List[B]] = s => ops.map(_.apply(s))

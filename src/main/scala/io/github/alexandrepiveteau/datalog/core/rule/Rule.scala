@@ -10,10 +10,10 @@ sealed trait Atom[+T]
 case class Value[+T](value: T) extends Atom[T]
 
 // TODO : Document this.
-case class Variable(value: Any) extends Atom[Nothing]
+case class Variable(value: String) extends Atom[Nothing]
 
 // TODO : Document this.
-case class Predicate(value: Any)
+case class Predicate(value: String)
 
 // TODO : Document this.
 // TODO : Rename this to Atom?

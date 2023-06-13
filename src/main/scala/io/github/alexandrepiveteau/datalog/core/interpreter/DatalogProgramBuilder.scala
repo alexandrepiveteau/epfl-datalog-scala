@@ -1,6 +1,7 @@
 package io.github.alexandrepiveteau.datalog.core.interpreter
 
 import io.github.alexandrepiveteau.datalog.core.*
+import io.github.alexandrepiveteau.datalog.core.interpreter.engine.ExecutionEngine
 import io.github.alexandrepiveteau.datalog.core.rule.*
 
 import scala.collection.mutable
@@ -16,11 +17,11 @@ class DatalogProgramBuilder[T](private val domain: Domain[T],
 
   override def predicate(): Predicate =
     nextRelation += 1
-    Predicate(nextRelation)
+    Predicate(nextRelation.toString)
 
   override def variable(): Variable =
     nextVariable += 1
-    Variable(nextVariable)
+    Variable(nextVariable.toString)
 
   // TODO : Document this.
   private val rules = mutable.Set[Rule[T]]()
@@ -58,5 +59,5 @@ class DatalogProgramBuilder[T](private val domain: Domain[T],
     requireGrounding(rule)
     rules.add(rule)
 
-  override def build(): Program[T] = new DatalogProgram(domain, rules.toSet, algorithm)
+  override def build(engine: ExecutionEngine[T]): Program[T] = new DatalogProgram(domain, rules.toSet, algorithm, engine)
 

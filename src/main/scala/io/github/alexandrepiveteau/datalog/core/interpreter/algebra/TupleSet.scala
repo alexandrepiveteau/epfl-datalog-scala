@@ -15,90 +15,97 @@ case class TupleSet[T](arity: Int, tuples: Set[Fact[T]]):
   def join(other: TupleSet[T]): TupleSet[T] =
     buildRelation(arity + other.arity)(foreach(a => other.foreach(b => add(a ++ b))))
 
-given Relation[TupleSet] with
+object TupleSet:
 
-  override def empty[T](arity: Int): TupleSet[T] =
+  def empty[T](arity: Int): TupleSet[T] =
     TupleSet(arity, Set.empty)
 
-  override def domain[T](arity: Int, domain: Set[Value[T]]): TupleSet[T] =
+  def domain[T](arity: Int, domain: Set[Value[T]]): TupleSet[T] =
     val column = TupleSet(1, domain.map(List(_)))
-    var result = if arity == 0 then empty(0) else column
+    var result = if arity == 0 then TupleSet(0, Set.empty[Fact[T]]) else column
     for _ <- 1 until arity do result = result.join(column)
     result
 
-  override def join[T](relations: List[TupleSet[T]]): TupleSet[T] =
+  def join[T](relations: List[TupleSet[T]]): TupleSet[T] =
     val iterator = relations.iterator
     var result = iterator.next()
     while (iterator.hasNext) result = result.join(iterator.next())
     result
 
-  extension[T] (r: TupleSet[T])
+  def arity[T](relation: TupleSet[T]): Int =
+    relation.arity
 
-    override def arity: Int = r.arity
-
-    override def aggregate(projection: List[AggregationColumn[T]],
-                           same: Set[Index],
-                           aggregate: AggregationFunction,
-                           indices: Set[Index])
-                          (using domain: Domain[T]): TupleSet[T] =
-      buildRelation(projection.size) {
-        val result = mutable.Map.empty[Set[Value[T]], Fact[T]]
-        r.distinct().foreach { atom =>
-          val key = same.map { it => atom(it.index) }
-          val existing = result.get(key)
-          val value = projection.map { it => atom.value(it, indices, aggregate) }
-          val updated =
-            existing
-              .map(it => merge(it, value, aggregate, projection))
-              .getOrElse(value)
-          result.update(key, updated)
-        }
-        result.values.foreach(add)
+  def aggregate[T](relation: TupleSet[T],
+                   projection: List[AggregationColumn[T]],
+                   same: Set[Index],
+                   aggregate: AggregationFunction,
+                   indices: Set[Index])
+                  (using domain: Domain[T]): TupleSet[T] =
+    buildRelation(projection.size) {
+      val result = mutable.Map.empty[Set[Value[T]], Fact[T]]
+      TupleSet.distinct(relation).foreach { atom =>
+        val key = same.map { it => atom(it.index) }
+        val existing = result.get(key)
+        val value = projection.map { it => atom.value(it, indices, aggregate) }
+        val updated =
+          existing
+            .map(it => merge(it, value, aggregate, projection))
+            .getOrElse(value)
+        result.update(key, updated)
       }
+      result.values.foreach(add)
+    }
 
-    override def minus(other: TupleSet[T]): TupleSet[T] =
-      buildRelation(r.arity) {
-        r.foreach { row =>
-          if (!other.tuples.contains(row)) {
-            add(row)
-          }
-        }
-      }
-
-    override def union(other: TupleSet[T]): TupleSet[T] =
-      buildRelation(r.arity) {
-        r.foreach(add)
-        other.foreach(add)
-      }
-
-    override def distinct(): TupleSet[T] =
-      buildRelation(r.arity) {
-        val seen = mutable.Set.empty[Fact[T]]
-        r.foreach { row =>
-          if (!seen.contains(row)) {
-            seen.add(row)
-            add(row)
-          }
+  def minus[T](relation: TupleSet[T], other: TupleSet[T]): TupleSet[T] =
+    val tuples = relation
+    val otherTuples = other
+    buildRelation(tuples.arity) {
+      tuples.foreach { row =>
+        if (!otherTuples.tuples.contains(row)) {
+          add(row)
         }
       }
+    }
 
-    override def project(columns: List[Column[T]]): TupleSet[T] =
-      buildRelation(columns.size) {
-        r.foreach { row =>
-          add(columns.map(row.value))
+  def union[T](relation: TupleSet[T], other: TupleSet[T]): TupleSet[T] =
+    val tuples = relation
+    val otherTuples = other
+    buildRelation(tuples.arity) {
+      tuples.foreach(add)
+      otherTuples.foreach(add)
+    }
+
+  def distinct[T](relation: TupleSet[T]): TupleSet[T] =
+    val tuples = relation
+    buildRelation(tuples.arity) {
+      val seen = mutable.Set.empty[Fact[T]]
+      tuples.foreach { row =>
+        if (!seen.contains(row)) {
+          seen.add(row)
+          add(row)
         }
       }
+    }
 
-    override def select(selection: Set[Set[Column[T]]]): TupleSet[T] =
-      val list = selection.toList.map(_.toList)
-      buildRelation(r.arity) {
-        r.foreach { row =>
-          val insert = list.forall {
-            g => g.forall(c => row.value(c) == row.value(g.head))
-          }
-          if (insert) add(row)
-        }
+  def project[T](relation: TupleSet[T], columns: List[Column[T]]): TupleSet[T] =
+    buildRelation(columns.size) {
+      relation.foreach { row =>
+        add(columns.map(row.value))
       }
+    }
+
+  def select[T](relation: TupleSet[T], selection: Set[Set[Column[T]]]): TupleSet[T] =
+    val list = selection.toList.map(_.toList)
+    val tuples = relation
+    buildRelation(tuples.arity) {
+      tuples.foreach { row =>
+        val insert = list.forall {
+          g => g.forall(c => row.value(c) == row.value(g.head))
+        }
+        if (insert) add(row)
+      }
+    }
+
 
 // TODO : Document this.
 private def buildRelation[T](arity: Int)(builder: mutable.Set[Fact[T]] ?=> Unit): TupleSet[T] =

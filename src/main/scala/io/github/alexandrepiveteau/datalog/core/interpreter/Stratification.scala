@@ -91,10 +91,10 @@ private def hasCycle[T](strata: List[Set[PredicateWithArity]], rules: RulesDatab
 
 // TODO : Implement this.
 // TODO : Document this.
-def stratifiedEval[O[_, _], R[_] : Relation, T: Context](target: PredicateWithArity, idb: RulesDatabase[T],
-                                                         base: Database, result: Database)
-                                                        (evalStrata: (RulesDatabase[T], Database, Database) => O[T, Unit])
-                                                        (using op: IROp[O, R]): O[T, Unit] =
+def stratifiedEval[O[_, _], R[_], T: Context](target: PredicateWithArity, idb: RulesDatabase[T],
+                                              base: Database, result: Database)
+                                             (evalStrata: (RulesDatabase[T], Database, Database) => O[T, Unit])
+                                             (using op: IROp[O, R]): O[T, Unit] =
   val order = stratify(dependencies(idb, target), idb)
   if hasCycle(order, idb) then
     throw NoStratificationException()

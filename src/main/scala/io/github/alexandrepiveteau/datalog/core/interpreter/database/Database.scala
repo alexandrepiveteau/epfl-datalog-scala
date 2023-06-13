@@ -117,7 +117,7 @@ private case class MapMutableFactsDatabase[T](map: mutable.Map[PredicateWithArit
   @targetName("plusAssign")
   override def +=(other: FactsDatabase[T]): Unit =
     other.iterator.foreach { predicate =>
-      val updated = this (predicate).union(other(predicate)).distinct()
+      val updated = TupleSet(predicate.arity, this(predicate).tuples ++ other(predicate).tuples)
       update(predicate, updated)
     }
 
@@ -125,7 +125,7 @@ private case class MapMutableFactsDatabase[T](map: mutable.Map[PredicateWithArit
     map.update(predicate, relation)
 
   override def apply(predicate: PredicateWithArity): TupleSet[T] =
-    map.getOrElse(predicate, summon[Relation[TupleSet]].empty[T](predicate.arity))
+    map.getOrElse(predicate, TupleSet(predicate.arity, Set.empty))
 
   override def iterator: Iterator[PredicateWithArity] =
     map.keys.iterator

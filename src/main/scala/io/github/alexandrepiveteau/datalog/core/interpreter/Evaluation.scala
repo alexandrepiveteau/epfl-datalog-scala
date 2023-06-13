@@ -43,13 +43,15 @@ private def selection[T](rule: List[Atom[T]]): Set[Set[Column[T]]] =
   result.toSet
 
 // TODO : Document this.
-private def evalRule[R[_] : Relation, T: Context](rule: Rule[T], relations: List[R[T]]): R[T] =
+private def evalRule[O[_, _], R[_], T: Context](rule: Rule[T], relations: List[O[T, R[T]]])
+                                               (using op: IROp[O, R]): O[T, R[T]] =
   rule match
     case rule: CombinationRule[T] => evalCombinationRule(rule, relations)
     case rule: AggregationRule[T] => evalAggregationRule(rule, relations.head)
 
 // TODO : Document this.
-private def evalCombinationRule[R[_] : Relation, T: Context](rule: CombinationRule[T], relations: List[R[T]]): R[T] =
+private def evalCombinationRule[O[_, _], R[_], T: Context](rule: CombinationRule[T], relations: List[O[T, R[T]]])
+                                                          (using op: IROp[O, R]): O[T, R[T]] =
   if rule.body.size != relations.size then throw IllegalArgumentException("Invalid number of relations.")
   // 1. Negate all the relations that are negated in the rule.
   // 2. Generate a concatenation of all atoms in the rule, after the join.
@@ -57,17 +59,18 @@ private def evalCombinationRule[R[_] : Relation, T: Context](rule: CombinationRu
   // 4. Select the rows that match the constants and variables.
   // 5. Project the rows to the correct indices, and add constants to the projection.
   val list = relations.zipWithIndex
-    .map((r, idx) => if rule.body(idx).negated then negated(r) else r)
+    .map((r, idx) => if rule.body(idx).negated then negated(rule.body(idx).arity, r) else r)
   val concat = rule.body.flatMap(_.atoms.toList)
-  summon[Relation[R]].join[T](list)
+  op.join(list)
     .select(selection(concat))
     .project(projection(rule.head.atoms, concat))
 
 // TODO : Document this.
-private def evalAggregationRule[R[_] : Relation, T: Context](rule: AggregationRule[T], relation: R[T]): R[T] =
+private def evalAggregationRule[O[_, _], R[_], T](rule: AggregationRule[T], relation: O[T, R[T]])
+                                                 (using op: IROp[O, R], context: Context[T]): O[T, R[T]] =
   // 1. Negate the relation if the rule is negated.
   // 2. Perform the aggregation.
-  val rel = if rule.clause.negated then negated(relation) else relation
+  val rel = if rule.clause.negated then negated(rule.clause.arity, relation) else relation
   val projection = rule.head.atoms.map {
     case atom: Value[T] => AggregationColumnColumn(Constant(atom))
     case atom: Variable =>
@@ -76,15 +79,16 @@ private def evalAggregationRule[R[_] : Relation, T: Context](rule: AggregationRu
   }
   val same = rule.aggregate.same.toSet.map(it => Index(rule.clause.atoms.indexOf(it)))
   val indices = rule.aggregate.columns.toSet.map(it => Index(rule.clause.atoms.indexOf(it)))
-  rel.aggregate(projection, same, rule.aggregate.agg, indices)(using summon[Context[T]].domain)
+  rel.aggregate(projection, same, rule.aggregate.agg, indices)(using context.domain)
 
 // TODO : Document this.
-private def evalRuleIncremental[R[_] : Relation, T: Context](rule: Rule[T],
-                                                             relations: List[R[T]],
-                                                             incremental: List[R[T]]): R[T] =
+private def evalRuleIncremental[O[_, _], R[_], T: Context](rule: Rule[T],
+                                                           relations: List[O[T, R[T]]],
+                                                           incremental: List[O[T, R[T]]])
+                                                          (using op: IROp[O, R]): O[T, R[T]] =
   if rule.body.size != relations.size then throw IllegalArgumentException("Invalid number of relations.")
   if rule.body.size != incremental.size then throw IllegalArgumentException("Invalid number of relations.")
-  var result = summon[Relation[R]].empty[T](rule.head.arity)
+  var result = op.empty[T](rule.head.arity)
   for i <- rule.body.indices do {
     val args = List.range(0, rule.body.size).map { it => if (it == i) incremental(it) else relations(it) }
     result = result.union(evalRule(rule, args))
@@ -92,65 +96,53 @@ private def evalRuleIncremental[R[_] : Relation, T: Context](rule: Rule[T],
   result.distinct()
 
 // TODO : Document this.
-private def eval[O[_, _], R[_] : Relation, T: Context](predicate: PredicateWithArity,
-                                                       idb: RulesDatabase[T],
-                                                       base: Database,
-                                                       derived: Database)
-                                                      (using op: IROp[O, R]): O[T, R[T]] =
+private def eval[O[_, _], R[_], T: Context](predicate: PredicateWithArity,
+                                            idb: RulesDatabase[T],
+                                            base: Database,
+                                            derived: Database)
+                                           (using op: IROp[O, R]): O[T, R[T]] =
   val rules = idb(predicate)
-  var result = op.lift[T, R[T]](summon[Relation[R]].empty[T](predicate.arity))
+  var result = op.empty[T](predicate.arity)
   for rule <- rules do {
     val list = rule.body.map { it =>
-      for
-        base <- op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
-        derived <- op.scan[T](derived, PredicateWithArity(it.predicate, it.arity))
-      yield base.union(derived)
+      val baseOp = op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
+      val derivedOp = op.scan[T](derived, PredicateWithArity(it.predicate, it.arity))
+      baseOp.union(derivedOp)
     }
-    result = for
-      r <- result
-      ops <- list.toOp
-      res = evalRule(rule, ops)
-    yield r.union(res)
+    result = result.union(evalRule(rule, list))
   }
-  result.map(_.distinct())
+  result.distinct()
 
 // TODO : Document this.
-private def evalIncremental[O[_, _], R[_] : Relation, T: Context](predicate: PredicateWithArity,
-                                                                  idb: RulesDatabase[T],
-                                                                  base: Database,
-                                                                  derived: Database,
-                                                                  delta: Database)
-                                                                 (using op: IROp[O, R]): O[T, R[T]] =
+private def evalIncremental[O[_, _], R[_], T: Context](predicate: PredicateWithArity,
+                                                       idb: RulesDatabase[T],
+                                                       base: Database,
+                                                       derived: Database,
+                                                       delta: Database)
+                                                      (using op: IROp[O, R]): O[T, R[T]] =
   val rules = idb(predicate)
-  var result = op.lift[T, R[T]](summon[Relation[R]].empty[T](predicate.arity))
+  var result = op.empty[T](predicate.arity)
   for rule <- rules do {
     val baseList = rule.body.map { it =>
-      for
-        base <- op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
-        derived <- op.scan[T](derived, PredicateWithArity(it.predicate, it.arity))
-      yield base.union(derived)
+      val baseOp = op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
+      val derivedOp = op.scan[T](derived, PredicateWithArity(it.predicate, it.arity))
+      baseOp.union(derivedOp)
     }
     val deltaList = rule.body.map { it =>
       // Negation needs base facts to be present in the delta.
-      for
-        base <- op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
-        delta <- op.scan[T](delta, PredicateWithArity(it.predicate, it.arity))
-      yield base.union(delta)
+      val baseOp = op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
+      val deltaOp = op.scan[T](delta, PredicateWithArity(it.predicate, it.arity))
+      baseOp.union(deltaOp)
     }
-    result = for
-      r <- result
-      baseOps <- baseList.toOp
-      deltaOps <- deltaList.toOp
-      res = evalRuleIncremental(rule, baseOps, deltaOps)
-    yield r.union(res)
+    result = result.union(evalRuleIncremental(rule, baseList, deltaList))
   }
-  result.map(_.distinct())
+  result.distinct()
 
 // TODO : Document this.
-def naiveEval[O[_, _], R[_] : Relation, T: Context](idb: RulesDatabase[T],
-                                                    base: Database,
-                                                    result: Database)
-                                                   (using op: IROp[O, R]): O[T, Unit] =
+def naiveEval[O[_, _], R[_], T: Context](idb: RulesDatabase[T],
+                                         base: Database,
+                                         result: Database)
+                                        (using op: IROp[O, R]): O[T, Unit] =
   val copy = Database("Copy")
   val sequence = mutable.ListBuffer[O[T, Unit]]()
   idb.iterator.foreach { predicate =>
@@ -160,15 +152,15 @@ def naiveEval[O[_, _], R[_] : Relation, T: Context](idb: RulesDatabase[T],
     val res = eval(predicate, idb, base, result)
     sequence += op.store(result, predicate, res)
   }
-  op.doWhileNotEqual[T, Unit](
+  op.doWhileNotEqual(
     op.sequence(sequence.toList),
     result,
     copy,
   )
 
 // TODO : Document this.
-def semiNaiveEval[O[_, _], R[_] : Relation, T: Context](idb: RulesDatabase[T], base: Database, result: Database)
-                                                       (using op: IROp[O, R]): O[T, Unit] =
+def semiNaiveEval[O[_, _], R[_], T: Context](idb: RulesDatabase[T], base: Database, result: Database)
+                                            (using op: IROp[O, R]): O[T, Unit] =
   val delta = Database("Delta")
   val copy = Database("Copy")
   val outer = immutable.List.newBuilder[O[T, Unit]]
@@ -184,22 +176,12 @@ def semiNaiveEval[O[_, _], R[_] : Relation, T: Context](idb: RulesDatabase[T], b
   idb.iterator.foreach { p =>
     val facts = evalIncremental(p, idb, base, result, copy)
     val existing = op.scan[T](result, p)
-    inner += op.store(delta, p,
-      for
-        f <- facts
-        e <- existing
-      yield f.minus(e)
-    )
+    inner += op.store(delta, p, facts.minus(existing))
   }
   idb.iterator.foreach { p =>
     val current = op.scan[T](result, p)
     val newFacts = op.scan[T](delta, p)
-    inner += op.store(result, p,
-      for
-        c <- current
-        f <- newFacts
-      yield c.union(f)
-    )
+    inner += op.store(result, p, current.union(newFacts))
   }
 
   outer += op.doWhileNonEmpty(

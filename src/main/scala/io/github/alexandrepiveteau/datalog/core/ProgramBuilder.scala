@@ -1,5 +1,6 @@
 package io.github.alexandrepiveteau.datalog.core
 
+import io.github.alexandrepiveteau.datalog.core.interpreter.engine.ExecutionEngine
 import io.github.alexandrepiveteau.datalog.core.interpreter.{Algorithm, DatalogProgramBuilder, Naive}
 import io.github.alexandrepiveteau.datalog.core.rule.*
 
@@ -22,7 +23,7 @@ trait ProgramBuilder[T]:
   def rule(rule: Rule[T]): Unit
 
   // TODO : Document this.
-  def build(): Program[T]
+  def build(engine: ExecutionEngine[T] = ExecutionEngine.interpreter): Program[T]
 
 // TODO : Document this.
 object ProgramBuilder:

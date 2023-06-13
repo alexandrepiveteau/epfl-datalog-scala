@@ -1,7 +1,7 @@
 package io.github.alexandrepiveteau.datalog.core.interpreter.ir
 
 // TODO : Document this.
-case class Database(backing: Any)
+case class Database(backing: String)
 
 // TODO : Document this.
 object Database {

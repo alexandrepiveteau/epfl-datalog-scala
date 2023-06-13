@@ -1,5 +1,6 @@
 package io.github.alexandrepiveteau.datalog.parser
 
+import io.github.alexandrepiveteau.datalog.core.interpreter.engine.ExecutionEngine
 import io.github.alexandrepiveteau.datalog.core.interpreter.{Algorithm, Naive}
 import io.github.alexandrepiveteau.datalog.core.{Domain, Program, ProgramBuilder}
 import io.github.alexandrepiveteau.datalog.parser.core.*
@@ -14,7 +15,10 @@ import io.github.alexandrepiveteau.datalog.parser.core.Parser.{Result, State}
  * @param algorithm the algorithm used to evaluate the program.
  * @tparam T the type of the constant.
  */
-case class DatalogProgramParser[T](constant: Parser[T], domain: Domain[T], algorithm: Algorithm = Naive) extends Parser[Program[T]]:
+case class DatalogProgramParser[T](constant: Parser[T],
+                                   domain: Domain[T],
+                                   algorithm: Algorithm = Naive,
+                                   engine: ExecutionEngine[T] = ExecutionEngine.interpreter[T]) extends Parser[Program[T]]:
 
   // Whitespace.
   private val ws = regexToken("\\s*".r)
@@ -27,7 +31,7 @@ case class DatalogProgramParser[T](constant: Parser[T], domain: Domain[T], algor
   private val program = rules.map(rules =>
     val builder = ProgramBuilder(domain, algorithm)
     for rule <- rules do builder.rule(rule)
-    builder.build()
+    builder.build(engine)
   )
 
   // Program.
