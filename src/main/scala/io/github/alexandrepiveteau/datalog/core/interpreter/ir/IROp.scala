@@ -88,6 +88,8 @@ trait IROp[O[_, _], R[_]]:
 
   def join[C](relations: List[O[C, R[C]]]): O[C, R[C]]
 
+  def union[C](relations: Set[O[C, R[C]]]): O[C, R[C]]
+
   extension[C] (relation: O[C, R[C]])
 
     def arity: O[C, Int]
@@ -99,8 +101,6 @@ trait IROp[O[_, _], R[_]]:
                  )(using domain: Domain[C]): O[C, R[C]]
 
     def minus(other: O[C, R[C]]): O[C, R[C]]
-
-    def union(other: O[C, R[C]]): O[C, R[C]]
 
     def distinct(): O[C, R[C]]
 

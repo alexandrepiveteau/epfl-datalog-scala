@@ -4,7 +4,7 @@ import io.github.alexandrepiveteau.datalog.core.Domain
 import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.TupleSet
 import io.github.alexandrepiveteau.datalog.core.interpreter.database.{PredicateWithArity, RulesDatabase, StorageManager}
 import io.github.alexandrepiveteau.datalog.core.interpreter.engine.ContextExecutionEngine
-import io.github.alexandrepiveteau.datalog.core.interpreter.engine.staged.transforms.{EliminateDistinct, EliminateEmptyUnion, EliminateSingletonSequence, OptimizeSelect}
+import io.github.alexandrepiveteau.datalog.core.interpreter.engine.staged.transforms.*
 import io.github.alexandrepiveteau.datalog.core.interpreter.ir.Database.{Base, Result}
 import io.github.alexandrepiveteau.datalog.core.interpreter.{Algorithm, Context, stratifiedEval}
 
@@ -29,6 +29,7 @@ class StagedExecutionEngine extends ContextExecutionEngine[Int]:
       EliminateEmptyUnion,
       EliminateSingletonSequence,
       EliminateDistinct,
+      FlattenUnion,
       OptimizeSelect,
     )
 
@@ -44,7 +45,7 @@ class StagedExecutionEngine extends ContextExecutionEngine[Int]:
           compile(optimized)
         }
       }
-      println(expr.show)
+      println(prettyCode(expr.show))
       expr
     }
 

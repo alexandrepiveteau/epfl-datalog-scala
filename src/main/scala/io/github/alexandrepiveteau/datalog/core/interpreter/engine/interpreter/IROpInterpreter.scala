@@ -56,6 +56,9 @@ given InterpreterIROp: IROp[IROpInterpreter, TupleSet] with
   override def join[T](relations: List[IROpInterpreter[T, TupleSet[T]]]): IROpInterpreter[T, TupleSet[T]] = s =>
     TupleSet.join(relations.map(_.apply(s)))
 
+  override def union[C](relations: Set[IROpInterpreter[C, TupleSet[C]]]): IROpInterpreter[C, TupleSet[C]] = s =>
+    TupleSet.union(relations.map(_.apply(s)))
+
   extension[T] (op: IROpInterpreter[T, TupleSet[T]])
 
     override def arity: IROpInterpreter[T, Int] = s =>
@@ -70,9 +73,6 @@ given InterpreterIROp: IROp[IROpInterpreter, TupleSet] with
 
     override def minus(other: IROpInterpreter[T, TupleSet[T]]): IROpInterpreter[T, TupleSet[T]] = s =>
       TupleSet.minus(op(s), other(s))
-
-    override def union(other: IROpInterpreter[T, TupleSet[T]]): IROpInterpreter[T, TupleSet[T]] = s =>
-      TupleSet.union(op(s), other(s))
 
     override def distinct(): IROpInterpreter[T, TupleSet[T]] = s =>
       TupleSet.distinct(op(s))

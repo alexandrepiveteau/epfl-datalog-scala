@@ -32,6 +32,14 @@ object TupleSet:
     while (iterator.hasNext) result = result.join(iterator.next())
     result
 
+  def union[T](relations: Set[TupleSet[T]]): TupleSet[T] =
+    val iterator = relations.iterator
+    val first = iterator.next()
+    buildRelation(first.arity) {
+      first.foreach(add)
+      while (iterator.hasNext) iterator.next().foreach(add)
+    }
+
   def arity[T](relation: TupleSet[T]): Int =
     relation.arity
 
@@ -65,14 +73,6 @@ object TupleSet:
           add(row)
         }
       }
-    }
-
-  def union[T](relation: TupleSet[T], other: TupleSet[T]): TupleSet[T] =
-    val tuples = relation
-    val otherTuples = other
-    buildRelation(tuples.arity) {
-      tuples.foreach(add)
-      otherTuples.foreach(add)
     }
 
   def distinct[T](relation: TupleSet[T]): TupleSet[T] =

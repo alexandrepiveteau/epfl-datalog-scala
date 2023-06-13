@@ -20,10 +20,10 @@ abstract class TopDownStagedOpTransform extends StagedOpTransform:
     case op: EmptyOp[C] => transformEmptyOp(op)
     case op: DomainOp[C] => transformDomainOp(op)
     case op: JoinOp[C] => transformJoinOp(op)
+    case op: UnionOp[C] => transformUnionOp(op)
     case op: ArityOp[C] => transformArityOp(op)
     case op: AggregateOp[C] => transformAggregateOp(op)
     case op: MinusOp[C] => transformMinusOp(op)
-    case op: UnionOp[C] => transformUnionOp(op)
     case op: DistinctOp[C] => transformDistinctOp(op)
     case op: ProjectOp[C] => transformProjectOp(op)
     case op: SelectOp[C] => transformSelectOp(op)
@@ -81,6 +81,12 @@ abstract class TopDownStagedOpTransform extends StagedOpTransform:
   /**
    * @see [[transform()]] for the top-level documentation.
    */
+  protected def transformUnionOp[C](op: UnionOp[C]): StagedOp[C, TupleSet[C]] =
+    UnionOp(op.relations.map(transform))
+
+  /**
+   * @see [[transform()]] for the top-level documentation.
+   */
   protected def transformArityOp[C](op: ArityOp[C]): StagedOp[C, Int] =
     ArityOp(transform(op.relation))
 
@@ -95,12 +101,6 @@ abstract class TopDownStagedOpTransform extends StagedOpTransform:
    */
   protected def transformMinusOp[C](op: MinusOp[C]): StagedOp[C, TupleSet[C]] =
     MinusOp(transform(op.left), transform(op.right))
-
-  /**
-   * @see [[transform()]] for the top-level documentation.
-   */
-  protected def transformUnionOp[C](op: UnionOp[C]): StagedOp[C, TupleSet[C]] =
-    UnionOp(transform(op.left), transform(op.right))
 
   /**
    * @see [[transform()]] for the top-level documentation.

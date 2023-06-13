@@ -91,7 +91,7 @@ private def evalRuleIncremental[O[_, _], R[_], T: Context](rule: Rule[T],
   var result = op.empty[T](rule.head.arity)
   for i <- rule.body.indices do {
     val args = List.range(0, rule.body.size).map { it => if (it == i) incremental(it) else relations(it) }
-    result = result.union(evalRule(rule, args))
+    result = op.union(Set(result, evalRule(rule, args)))
   }
   result.distinct()
 
@@ -107,9 +107,9 @@ private def eval[O[_, _], R[_], T: Context](predicate: PredicateWithArity,
     val list = rule.body.map { it =>
       val baseOp = op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
       val derivedOp = op.scan[T](derived, PredicateWithArity(it.predicate, it.arity))
-      baseOp.union(derivedOp)
+      op.union(Set(baseOp, derivedOp))
     }
-    result = result.union(evalRule(rule, list))
+    result = op.union(Set(result, evalRule(rule, list)))
   }
   result.distinct()
 
@@ -126,15 +126,15 @@ private def evalIncremental[O[_, _], R[_], T: Context](predicate: PredicateWithA
     val baseList = rule.body.map { it =>
       val baseOp = op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
       val derivedOp = op.scan[T](derived, PredicateWithArity(it.predicate, it.arity))
-      baseOp.union(derivedOp)
+      op.union(Set(baseOp, derivedOp))
     }
     val deltaList = rule.body.map { it =>
       // Negation needs base facts to be present in the delta.
       val baseOp = op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
       val deltaOp = op.scan[T](delta, PredicateWithArity(it.predicate, it.arity))
-      baseOp.union(deltaOp)
+      op.union(Set(baseOp, deltaOp))
     }
-    result = result.union(evalRuleIncremental(rule, baseList, deltaList))
+    result = op.union(Set(result, evalRuleIncremental(rule, baseList, deltaList)))
   }
   result.distinct()
 
@@ -181,7 +181,7 @@ def semiNaiveEval[O[_, _], R[_], T: Context](idb: RulesDatabase[T], base: Databa
   idb.iterator.foreach { p =>
     val current = op.scan[T](result, p)
     val newFacts = op.scan[T](delta, p)
-    inner += op.store(result, p, current.union(newFacts))
+    inner += op.store(result, p, op.union(Set(current, newFacts)))
   }
 
   outer += op.doWhileNonEmpty(

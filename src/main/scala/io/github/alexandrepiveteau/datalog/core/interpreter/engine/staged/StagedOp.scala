@@ -41,6 +41,8 @@ case class DomainOp[C](arity: Int, values: Set[Value[C]]) extends StagedOp[C, Tu
 
 case class JoinOp[C](relations: List[StagedOp[C, TupleSet[C]]]) extends StagedOp[C, TupleSet[C]]
 
+case class UnionOp[C](relations: Set[StagedOp[C, TupleSet[C]]]) extends StagedOp[C, TupleSet[C]]
+
 case class ArityOp[C](relation: StagedOp[C, TupleSet[C]]) extends StagedOp[C, Int]
 
 case class AggregateOp[C](relation: StagedOp[C, TupleSet[C]],
@@ -51,8 +53,6 @@ case class AggregateOp[C](relation: StagedOp[C, TupleSet[C]],
                          )(using val domain: Domain[C]) extends StagedOp[C, TupleSet[C]]
 
 case class MinusOp[C](left: StagedOp[C, TupleSet[C]], right: StagedOp[C, TupleSet[C]]) extends StagedOp[C, TupleSet[C]]
-
-case class UnionOp[C](left: StagedOp[C, TupleSet[C]], right: StagedOp[C, TupleSet[C]]) extends StagedOp[C, TupleSet[C]]
 
 case class DistinctOp[C](relation: StagedOp[C, TupleSet[C]]) extends StagedOp[C, TupleSet[C]]
 
@@ -99,6 +99,9 @@ given StagedIROp: IROp[StagedOp, TupleSet] with
   override def join[C](relations: List[StagedOp[C, TupleSet[C]]]): StagedOp[C, TupleSet[C]] =
     JoinOp(relations)
 
+  override def union[C](relations: Set[StagedOp[C, TupleSet[C]]]): StagedOp[C, TupleSet[C]] =
+    UnionOp(relations)
+
   extension[C] (relation: StagedOp[C, TupleSet[C]])
 
     override def arity: StagedOp[C, Int] =
@@ -113,9 +116,6 @@ given StagedIROp: IROp[StagedOp, TupleSet] with
 
     override def minus(other: StagedOp[C, TupleSet[C]]): StagedOp[C, TupleSet[C]] =
       MinusOp(relation, other)
-
-    override def union(other: StagedOp[C, TupleSet[C]]): StagedOp[C, TupleSet[C]] =
-      UnionOp(relation, other)
 
     override def distinct(): StagedOp[C, TupleSet[C]] =
       DistinctOp(relation)
@@ -167,6 +167,8 @@ def compile[C: Type : ToExpr, O: Type : ToExpr](op: StagedOp[C, O])
     }
     case JoinOp(relations) =>
       '{ TupleSet.join[C](${ Expr.ofList(relations.map(compile(_))) }) }
+    case UnionOp(relations) =>
+      '{ TupleSet.union[C](${ Expr.ofSet(relations.map(compile(_))) }) }
     case ArityOp(relation) =>
       '{ TupleSet.arity(${ compile(relation) }) }
     case AggregateOp(relation, projection, same, aggregate, indices) =>
@@ -184,13 +186,6 @@ def compile[C: Type : ToExpr, O: Type : ToExpr](op: StagedOp[C, O])
         TupleSet.minus(
           ${ compile(first) },
           ${ compile(second) },
-        )
-      }
-    case UnionOp(left, right) =>
-      '{
-        TupleSet.union(
-          ${ compile(left) },
-          ${ compile(right) },
         )
       }
     case DistinctOp(relation) => '{ TupleSet.distinct(${ compile(relation) }) }
@@ -255,3 +250,7 @@ given PredicateWithArityToExpr: ToExpr[PredicateWithArity] with
 given StorageManagerToExpr[T: Type : ToExpr]: ToExpr[StorageManager[T]] with
   override def apply(x: StorageManager[T])(using Quotes): Expr[StorageManager[T]] =
     '{ StorageManager[T]() }
+
+extension (e: Expr.type)
+  def ofSet[T](xs: Set[Expr[T]])(using Type[T])(using Quotes): Expr[Set[T]] =
+    '{ ${ Expr.ofList(xs.toList) }.toSet }
