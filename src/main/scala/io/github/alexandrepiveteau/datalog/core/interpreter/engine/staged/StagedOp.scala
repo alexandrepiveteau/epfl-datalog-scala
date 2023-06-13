@@ -6,7 +6,7 @@ import io.github.alexandrepiveteau.datalog.core.interpreter.database.{PredicateW
 import io.github.alexandrepiveteau.datalog.core.interpreter.ir.{Database, IROp, Relation}
 import io.github.alexandrepiveteau.datalog.core.rule.{Predicate, Value}
 
-import scala.quoted.{Expr, Quotes, ToExpr, Type}
+import scala.quoted.*
 
 /**
  * A [[StagedOp]] is an intermediate representation of an operation which will be compiled through multi-stage
@@ -253,4 +253,4 @@ given StorageManagerToExpr[T: Type : ToExpr]: ToExpr[StorageManager[T]] with
 
 extension (e: Expr.type)
   def ofSet[T](xs: Set[Expr[T]])(using Type[T])(using Quotes): Expr[Set[T]] =
-    '{ ${ Expr.ofList(xs.toList) }.toSet }
+    '{ Set(${Varargs(xs.toSeq)}: _*) }
