@@ -1,6 +1,7 @@
 package io.github.alexandrepiveteau.datalog
 
 import io.github.alexandrepiveteau.datalog.core.domain
+import io.github.alexandrepiveteau.datalog.core.interpreter.SemiNaive
 import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.TupleSet
 import io.github.alexandrepiveteau.datalog.core.interpreter.engine.ExecutionEngine
 import io.github.alexandrepiveteau.datalog.core.rule.Predicate
@@ -18,7 +19,7 @@ def main(): Unit = {
       |tc(X,Y):-e(X, Y).
       |tc(X,Y):-e(X, Z),tc(Z, Y).
       |""".stripMargin
-  val parser = DatalogProgramParser(Int.parser, Int.domain, engine=ExecutionEngine.staged)
+  val parser = DatalogProgramParser(Int.parser, Int.domain, algorithm = SemiNaive, engine = ExecutionEngine.staged)
   val program = parser.parse(input)
   program.map(_.solve(Predicate("tc"), 2)).toList
     .flatten

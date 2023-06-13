@@ -129,90 +129,82 @@ given StagedIROp: IROp[StagedOp, TupleSet] with
 // COMPILATION OF THE IR TO AN EXPRESSION
 
 def compile[C: Type : ToExpr, O: Type : ToExpr](op: StagedOp[C, O])
-                                               (using quotes: Quotes): Expr[(StorageManager[C], Domain[C]) => O] =
+                                               (using quotes: Quotes, s: Expr[StorageManager[C]], d: Expr[Domain[C]]): Expr[O] =
   op match
     case SequenceOp(ops) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
-        ${ Expr.ofList(ops.map(compile(_))) }.foreach(_.apply(s, d))
-      }
+      ops.map(compile(_)).foldLeft('{ () })((acc, next) =>
+        '{
+          $acc
+          $next
+        })
     case ScanOp(database, predicate) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
-        s.database(${ Expr(database) }).apply(${ Expr(predicate) })
-      }
+      '{ ${ s }.database(${ Expr(database) }).apply(${ Expr(predicate) }) }
     case StoreOp(database, predicate, relation) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
-        s.database(${ Expr(database) }).update(${ Expr(predicate) }, ${ compile(relation) }.apply(s, d))
-      }
+      '{ ${ s }.database(${ Expr(database) }).update(${ Expr(predicate) }, ${ compile(relation) }) }
     case DoWhileNotEqualOp(op, first, second) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
+      '{
         while
-          ${ compile(op) }.apply(s, d)
-          s.database(${ Expr(first) }) != s.database(${ Expr(second) })
+          ${ compile(op) }
+          $s.database(${ Expr(first) }) != $s.database(${ Expr(second) })
         do ()
       }
     case DoWhileNonEmptyOp(op, database) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
+      '{
         while
-          ${ compile(op) }.apply(s, d)
-          s.database(${ Expr(database) }).nonEmpty
+          ${ compile(op) }
+          $s.database(${ Expr(database) }).nonEmpty
         do ()
       }
-    case MergeAndClearOp() => '{ (s: StorageManager[C], d: Domain[C]) =>
-      s.database(Database.Base) += s.database(Database.Result)
-      s.removeAll(Set(Database.Base))
+    case MergeAndClearOp() => '{
+      $s.database(Database.Base) += $s.database(Database.Result)
+      $s.removeAll(Set(Database.Base))
     }
-    case EmptyOp(arity) => '{ (s: StorageManager[C], d: Domain[C]) =>
+    case EmptyOp(arity) => '{
       TupleSet.empty[C](${ Expr(arity) })
     }
-    case DomainOp(arity, values) => '{ (s: StorageManager[C], d: Domain[C]) =>
+    case DomainOp(arity, values) => '{
       TupleSet.domain[C](${ Expr(arity) }, ${ Expr(values) })
     }
     case JoinOp(relations) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
-        val list = ${ Expr.ofList(relations.map(compile(_))) }
-        TupleSet.join[C](list.map(_.apply(s, d)))
-      }
+      '{ TupleSet.join[C](${ Expr.ofList(relations.map(compile(_))) }) }
     case ArityOp(relation) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
-        TupleSet.arity(${ compile(relation) }.apply(s, d))
-      }
+      '{ TupleSet.arity(${ compile(relation) }) }
     case AggregateOp(relation, projection, same, aggregate, indices) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
-        val r = ${ compile(relation) }.apply(s, d)
+      '{
+        val r = ${ compile(relation) }
         TupleSet.aggregate(r,
           ${ Expr(projection) },
           ${ Expr(same) },
           ${ Expr(aggregate) },
           ${ Expr(indices) },
-        )(using d)
+        )(using $d)
       }
     case MinusOp(first, second) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
+      '{
         TupleSet.minus(
-          ${ compile(first) }.apply(s, d),
-          ${ compile(second) }.apply(s, d),
+          ${ compile(first) },
+          ${ compile(second) },
         )
       }
     case UnionOp(left, right) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
+      '{
         TupleSet.union(
-          ${ compile(left) }.apply(s, d),
-          ${ compile(right) }.apply(s, d),
+          ${ compile(left) },
+          ${ compile(right) },
         )
       }
-    case DistinctOp(relation) =>
-      '{ (s: StorageManager[C], d: Domain[C]) => TupleSet.distinct(${ compile(relation) }.apply(s, d)) }
+    case DistinctOp(relation) => '{ TupleSet.distinct(${ compile(relation) }) }
     case ProjectOp(relation, projection) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
+      '{
         TupleSet.project(
-          ${ compile(relation) }.apply(s, d),
+          ${ compile(relation) },
           ${ Expr(projection) },
         )
       }
     case SelectOp(relation, selection) =>
-      '{ (s: StorageManager[C], d: Domain[C]) =>
+      '{
         TupleSet.select(
-          ${ compile(relation) }.apply(s, d),
+          ${ compile(relation) },
           ${ Expr(selection) },
         )
       }
