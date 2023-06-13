@@ -4,6 +4,7 @@ import io.github.alexandrepiveteau.datalog.core.Domain
 import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.TupleSet
 import io.github.alexandrepiveteau.datalog.core.interpreter.database.{PredicateWithArity, RulesDatabase, StorageManager}
 import io.github.alexandrepiveteau.datalog.core.interpreter.engine.ContextExecutionEngine
+import io.github.alexandrepiveteau.datalog.core.interpreter.engine.staged.transforms.{EliminateDistinct, EliminateEmptyUnion, EliminateSingletonSequence, OptimizeSelect}
 import io.github.alexandrepiveteau.datalog.core.interpreter.ir.Database.{Base, Result}
 import io.github.alexandrepiveteau.datalog.core.interpreter.{Algorithm, Context, stratifiedEval}
 
@@ -24,6 +25,15 @@ class StagedExecutionEngine extends ContextExecutionEngine[Int]:
 
     val ir = stratifiedEval[StagedOp, TupleSet, Int](target, idb, Base, Result)((i, e, r) => algorithm.evaluate(i, e, r))
 
+    val optimizations = Array(
+      EliminateEmptyUnion,
+      EliminateSingletonSequence,
+      EliminateDistinct,
+      OptimizeSelect,
+    )
+
+    val optimized = StagedOpTransform.optimize(ir, optimizations: _*)
+
     given staging.Compiler = staging.Compiler.make(getClass.getClassLoader)
 
     val compiled: (StorageManager[Int], Domain[Int]) => Unit = staging.run {
@@ -31,7 +41,7 @@ class StagedExecutionEngine extends ContextExecutionEngine[Int]:
         ${
           given Expr[StorageManager[Int]] = 's
           given Expr[Domain[Int]] = 'd
-          compile(ir)
+          compile(optimized)
         }
       }
       println(expr.show)

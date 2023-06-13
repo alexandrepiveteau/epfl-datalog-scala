@@ -48,7 +48,7 @@ case class AggregateOp[C](relation: StagedOp[C, TupleSet[C]],
                           same: Set[Index],
                           aggregate: AggregationFunction,
                           indices: Set[Index],
-                         )(using domain: Domain[C]) extends StagedOp[C, TupleSet[C]]
+                         )(using val domain: Domain[C]) extends StagedOp[C, TupleSet[C]]
 
 case class MinusOp[C](left: StagedOp[C, TupleSet[C]], right: StagedOp[C, TupleSet[C]]) extends StagedOp[C, TupleSet[C]]
 
