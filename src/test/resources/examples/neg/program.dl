@@ -1,0 +1,2 @@
+odd(x):-all(x),!even(x).
+newEven(x):-all(x),!odd(x).
