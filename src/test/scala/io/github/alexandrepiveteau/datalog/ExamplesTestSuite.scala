@@ -1,4 +1,4 @@
-package io.github.alexandrepiveteau.datalog.parser
+package io.github.alexandrepiveteau.datalog
 
 import io.github.alexandrepiveteau.datalog.core.interpreter.engine.ExecutionEngine
 import io.github.alexandrepiveteau.datalog.core.interpreter.{Algorithm, Naive, SemiNaive}
