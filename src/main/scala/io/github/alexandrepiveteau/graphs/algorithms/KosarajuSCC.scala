@@ -40,5 +40,5 @@ extension (graph: DirectedGraph)
       )
     }
 
-    val map = components.zipWithIndex.map((v, i) => Vertex(i) -> graph(components(v))).toMap
+    val map = components.zipWithIndex.map((_, it) => Vertex(it) -> graph(components(it))).toMap
     (res, map)
