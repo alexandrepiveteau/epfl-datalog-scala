@@ -30,7 +30,8 @@ case class MapRulesDatabase[T](map: Map[PredicateWithArity, Set[Rule[T]]]) exten
   override def apply(key: PredicateWithArity): Set[Rule[T]] = map.getOrElse(key, Set.empty)
 
   override def filter(keys: Iterable[PredicateWithArity]): RulesDatabase[T] =
-    MapRulesDatabase(map.view.filterKeys(it => map.keySet.contains(it)).toMap)
+    val kept = keys.toSet
+    MapRulesDatabase(map.view.filterKeys(it => kept.contains(it)).toMap)
 
   override def contains(key: PredicateWithArity): Boolean =
     map.contains(key)
