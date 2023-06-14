@@ -1,6 +1,5 @@
 package io.github.alexandrepiveteau.datalog.core.interpreter.algebra
 
-import io.github.alexandrepiveteau.datalog.core.interpreter.ir.Relation
 import io.github.alexandrepiveteau.datalog.core.rule.{Fact, Value}
 import io.github.alexandrepiveteau.datalog.core.{AggregationFunction, Domain}
 

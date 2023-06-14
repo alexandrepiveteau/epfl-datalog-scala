@@ -3,7 +3,7 @@ package io.github.alexandrepiveteau.datalog.core.interpreter.engine.staged
 import io.github.alexandrepiveteau.datalog.core.*
 import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.*
 import io.github.alexandrepiveteau.datalog.core.interpreter.database.{PredicateWithArity, StorageManager, nonEmpty}
-import io.github.alexandrepiveteau.datalog.core.interpreter.ir.{Database, IROp, Relation}
+import io.github.alexandrepiveteau.datalog.core.interpreter.ir.{Database, IROp}
 import io.github.alexandrepiveteau.datalog.core.rule.{Predicate, Value}
 
 import scala.quoted.*

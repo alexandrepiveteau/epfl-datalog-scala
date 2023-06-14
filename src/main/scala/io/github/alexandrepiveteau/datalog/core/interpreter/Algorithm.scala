@@ -1,7 +1,7 @@
 package io.github.alexandrepiveteau.datalog.core.interpreter
 
 import io.github.alexandrepiveteau.datalog.core.interpreter.database.RulesDatabase
-import io.github.alexandrepiveteau.datalog.core.interpreter.ir.{Database, IROp, Relation}
+import io.github.alexandrepiveteau.datalog.core.interpreter.ir.{Database, IROp}
 
 // TODO : Document this.
 sealed trait Algorithm {

@@ -1,7 +1,7 @@
 package io.github.alexandrepiveteau.datalog.core.interpreter
 
 import io.github.alexandrepiveteau.datalog.core.Domain
-import io.github.alexandrepiveteau.datalog.core.interpreter.ir.{IROp, Relation}
+import io.github.alexandrepiveteau.datalog.core.interpreter.ir.IROp
 import io.github.alexandrepiveteau.datalog.core.rule.Value
 
 // TODO : Document this.

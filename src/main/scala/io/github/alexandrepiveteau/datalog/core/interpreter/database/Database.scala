@@ -1,7 +1,6 @@
 package io.github.alexandrepiveteau.datalog.core.interpreter.database
 
 import io.github.alexandrepiveteau.datalog.core.interpreter.algebra.{TupleSet, given}
-import io.github.alexandrepiveteau.datalog.core.interpreter.ir.Relation
 import io.github.alexandrepiveteau.datalog.core.rule.{Fact, Rule}
 
 import scala.annotation.targetName
