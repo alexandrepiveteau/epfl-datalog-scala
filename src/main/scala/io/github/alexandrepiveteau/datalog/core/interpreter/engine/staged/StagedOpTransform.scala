@@ -18,7 +18,7 @@ trait StagedOpTransform:
    * @param op the [[StagedOp]] to transform.
    * @return a new [[StagedOp]] which may be more efficient to execute.
    */
-  def transform[C, O](op: StagedOp[C, O]): StagedOp[C, O]
+  def transform[C, O, R[_]](op: StagedOp[C, O, R]): StagedOp[C, O, R]
 
 object StagedOpTransform:
 
@@ -32,8 +32,8 @@ object StagedOpTransform:
    * @tparam O the type of the output of the operation.
    * @return a new [[StagedOp]] which may be more efficient to execute.
    */
-  def optimize[C, O](op: StagedOp[C, O], transforms: StagedOpTransform*): StagedOp[C, O] =
-    val step: StagedOp[C, O] => StagedOp[C, O] = op =>
+  def optimize[C, O, R[_]](op: StagedOp[C, O, R], transforms: StagedOpTransform*): StagedOp[C, O, R] =
+    val step: StagedOp[C, O, R] => StagedOp[C, O, R] = op =>
       transforms.foldLeft(op)((op, transform) => transform.transform(op))
     var current = op
     while

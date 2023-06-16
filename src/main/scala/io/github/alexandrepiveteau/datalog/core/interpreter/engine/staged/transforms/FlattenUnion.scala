@@ -5,7 +5,7 @@ import io.github.alexandrepiveteau.datalog.core.interpreter.engine.staged.{Stage
 
 object FlattenUnion extends TopDownStagedOpTransform:
 
-  override protected def transformUnionOp[C](op: UnionOp[C]): StagedOp[C, TupleSet[C]] =
+  override protected def transformUnionOp[C, R[_]](op: UnionOp[C, R]): StagedOp[C, R[C], R] =
     val flattened = op.relations.map(transform)
       .flatMap(op =>
         op match

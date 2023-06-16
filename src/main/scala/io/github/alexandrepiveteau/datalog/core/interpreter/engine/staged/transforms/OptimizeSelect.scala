@@ -8,7 +8,7 @@ import io.github.alexandrepiveteau.datalog.core.interpreter.engine.staged.{Selec
  */
 object OptimizeSelect extends TopDownStagedOpTransform:
 
-  override def transformSelectOp[C](op: SelectOp[C]): StagedOp[C, TupleSet[C]] =
+  override def transformSelectOp[C, R[_]](op: SelectOp[C, R]): StagedOp[C, R[C], R] =
     val child = transform(op.relation)
     val filtered = op.selection.filter(_.size > 1)
     if filtered.isEmpty then child

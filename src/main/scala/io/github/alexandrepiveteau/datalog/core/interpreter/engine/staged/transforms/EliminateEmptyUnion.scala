@@ -9,7 +9,7 @@ import io.github.alexandrepiveteau.datalog.core.interpreter.engine.staged.*
  */
 object EliminateEmptyUnion extends TopDownStagedOpTransform:
 
-  override def transformUnionOp[C](op: UnionOp[C]): StagedOp[C, TupleSet[C]] =
+  override def transformUnionOp[C, R[_]](op: UnionOp[C, R]): StagedOp[C, R[C], R] =
     val filtered = op.relations.map(transform)
-      .filter(!_.isInstanceOf[EmptyOp[C]])
+      .filter(!_.isInstanceOf[EmptyOp[C, R]])
     UnionOp(filtered)

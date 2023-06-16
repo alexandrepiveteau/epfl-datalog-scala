@@ -23,7 +23,7 @@ class StagedExecutionEngine extends ContextExecutionEngine[Int]:
                         context: Context[Int]): Unit =
     given Context[Int] = context
 
-    val ir = stratifiedEval[Int, [R] =>> StagedOp[Int, R], TupleSet](target, idb, Base, Result)((i, e, r) => algorithm.evaluate(i, e, r))
+    val ir = stratifiedEval[Int, [R] =>> StagedOp[Int, R, TupleSet], TupleSet](target, idb, Base, Result)((i, e, r) => algorithm.evaluate(i, e, r))
 
     val optimizations = Array(
       EliminateEmptyUnion,

@@ -9,5 +9,5 @@ import io.github.alexandrepiveteau.datalog.core.interpreter.engine.staged.{Disti
  */
 object EliminateDistinct extends TopDownStagedOpTransform:
 
-  override protected def transformDistinctOp[C](op: DistinctOp[C]): StagedOp[C, TupleSet[C]] =
+  override protected def transformDistinctOp[C, R[_]](op: DistinctOp[C, R]): StagedOp[C, R[C], R] =
     transform(op.relation)
