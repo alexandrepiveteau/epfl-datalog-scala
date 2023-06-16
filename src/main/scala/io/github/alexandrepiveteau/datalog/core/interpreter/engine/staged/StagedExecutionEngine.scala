@@ -40,8 +40,8 @@ class StagedExecutionEngine extends ContextExecutionEngine[Int]:
     val compiled: (StorageManager[Int], Domain[Int]) => Unit = staging.run {
       val expr = '{ (s: StorageManager[Int], d: Domain[Int]) =>
         ${
-          given Expr[StorageManager[Int]] = 's
-          given Expr[Domain[Int]] = 'd
+          given Expr[StorageManager[Int]] = '{ s }
+          given Expr[Domain[Int]] = '{ d }
           compile(optimized)
         }
       }
