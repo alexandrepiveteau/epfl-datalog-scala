@@ -13,29 +13,28 @@ import scala.quoted.*
  *
  * The result of the application of [[IROp]]s is given when the [[compute()]] operation is called.
  *
- * @tparam O the type of the operations, which work on constants and return values.
+ * @tparam C the type of the constants.
+ * @tparam O the type of the operations.
  * @tparam R the type of the relations.
  */
-trait IROp[O[_, _], R[_]]:
+trait IROp[C, O[_], R[_]]:
 
   /**
    * Sequences multiple [[IROp2]] together.
    *
    * @param ops the operations to sequence.
-   * @tparam C the type of the operations.
    * @return a new [[IROp]] which sequences the given operations.
    */
-  def sequence[C](ops: List[O[C, Unit]]): O[C, Unit]
+  def sequence(ops: List[O[Unit]]): O[Unit]
 
   /**
    * Scans the given database for the given predicate, and returns the relation.
    *
    * @param database  the database to scan.
    * @param predicate the predicate to scan.
-   * @tparam C the type of the constants in the relation.
    * @return a new [[R]] which has loaded the relation from the database.
    */
-  def scan[C](database: Database, predicate: PredicateWithArity): O[C, R[C]]
+  def scan(database: Database, predicate: PredicateWithArity): O[R[C]]
 
   /**
    * Stores a relation in the given database, replacing the previous value.
@@ -43,10 +42,9 @@ trait IROp[O[_, _], R[_]]:
    * @param database  the database to store the relation in.
    * @param predicate the predicate to store the relation at.
    * @param relation  the relation to store.
-   * @tparam C the type of the constants in the relation.
    * @return a new [[IROp]] which stores the relation in the database.
    */
-  def store[C](database: Database, predicate: PredicateWithArity, relation: O[C, R[C]]): O[C, Unit]
+  def store(database: Database, predicate: PredicateWithArity, relation: O[R[C]]): O[Unit]
 
   /**
    * Performs the operation until the two databases are equal.
@@ -54,20 +52,18 @@ trait IROp[O[_, _], R[_]]:
    * @param op     the operation to perform.
    * @param first  the first database to load the relation from.
    * @param second the second database to load the relation from.
-   * @tparam C the type of the constants in the relation.
    * @return a new [[IROp]] which loads the relation from the database.
    */
-  def doWhileNotEqual[C](op: O[C, Unit], first: Database, second: Database): O[C, Unit]
+  def doWhileNotEqual(op: O[Unit], first: Database, second: Database): O[Unit]
 
   /**
    * Performs the operation until the database is empty.
    *
    * @param op       the operation to perform.
    * @param database the database to load the relation from.
-   * @tparam C the type of the constants in the relation.
    * @return a new [[IROp]] which loads the relation from the database.
    */
-  def doWhileNonEmpty[C](op: O[C, Unit], database: Database): O[C, Unit]
+  def doWhileNonEmpty(op: O[Unit], database: Database): O[Unit]
 
   // TODO : Provide finer-grained operations for the following.
 
@@ -76,16 +72,15 @@ trait IROp[O[_, _], R[_]]:
    *
    * @return a new [[IROp]] which merges the result into the base.
    */
-  def mergeAndClear[C](): O[C, Unit]
+  def mergeAndClear(): O[Unit]
 
   /**
    * Creates a new relation with the given arity, and no tuples.
    *
    * @param arity the arity of the relation.
-   * @tparam C the type of the relation.
    * @return a new relation with the given arity, and no tuples.
    */
-  def empty[C](arity: Int): O[C, R[C]]
+  def empty(arity: Int): O[R[C]]
 
   /**
    * Creates a new relation with the given arity and all tuples that can be formed
@@ -93,19 +88,17 @@ trait IROp[O[_, _], R[_]]:
    *
    * @param arity  the arity of the relation.
    * @param values the values to use to create the tuples.
-   * @tparam C the type of the relation.
    * @return a new relation with the given arity and all tuples that can be formed
    */
-  def domain[C](arity: Int, values: Set[Value[C]]): O[C, R[C]]
+  def domain(arity: Int, values: Set[Value[C]]): O[R[C]]
 
   /**
    * Creates a new relation with the cross product of the given relations.
    *
    * @param relations the relations to cross product.
-   * @tparam C the type of the relation.
    * @return a new relation with the cross product of the given relations.
    */
-  def join[C](relations: List[O[C, R[C]]]): O[C, R[C]]
+  def join(relations: List[O[R[C]]]): O[R[C]]
 
   /**
    * Returns the tuples which are present either in the [[relations]].
@@ -113,14 +106,14 @@ trait IROp[O[_, _], R[_]]:
    * @param relations the relations to union.
    * @return the union of the [[relations]].
    */
-  def union[C](relations: Set[O[C, R[C]]]): O[C, R[C]]
+  def union(relations: Set[O[R[C]]]): O[R[C]]
 
-  extension[C] (relation: O[C, R[C]])
+  extension (relation: O[R[C]])
 
     /**
      * Returns the arity of the relation.
      */
-    def arity: O[C, Int]
+    def arity: O[Int]
 
     /**
      * Aggregates the relation to a set of values.
@@ -136,7 +129,7 @@ trait IROp[O[_, _], R[_]]:
                   same: Set[Index],
                   aggregate: AggregationFunction,
                   indices: Set[Index],
-                 )(using domain: Domain[C]): O[C, R[C]]
+                 )(using domain: Domain[C]): O[R[C]]
 
     /**
      * Returns the tuples in the [[relation]] which are not present in [[other]].
@@ -144,12 +137,12 @@ trait IROp[O[_, _], R[_]]:
      * @param other the relation to subtract from the [[relation]].
      * @return the difference between [[relation]] and [[other]].
      */
-    def minus(other: O[C, R[C]]): O[C, R[C]]
+    def minus(other: O[R[C]]): O[R[C]]
 
     /**
      * Returns a relation with only distinct tuples.
      */
-    def distinct(): O[C, R[C]]
+    def distinct(): O[R[C]]
 
     /**
      * Projects the relation using the given columns.
@@ -157,7 +150,7 @@ trait IROp[O[_, _], R[_]]:
      * @param projection the columns to project.
      * @return a new relation with the given columns.
      */
-    def project(projection: List[Column[C]]): O[C, R[C]]
+    def project(projection: List[Column[C]]): O[R[C]]
 
     /**
      * Selects the tuples in the relation which match the given selection.
@@ -165,5 +158,5 @@ trait IROp[O[_, _], R[_]]:
      * @param selection the selection to apply.
      * @return a new relation with the selected tuples.
      */
-    def select(selection: Set[Set[Column[C]]]): O[C, R[C]]
+    def select(selection: Set[Set[Column[C]]]): O[R[C]]
 

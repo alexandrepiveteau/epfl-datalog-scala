@@ -43,15 +43,15 @@ private def selection[T](rule: List[Term[T]]): Set[Set[Column[T]]] =
   result.toSet
 
 // TODO : Document this.
-private def evalRule[O[_, _], R[_], T: Context](rule: Rule[T], relations: List[O[T, R[T]]])
-                                               (using op: IROp[O, R]): O[T, R[T]] =
+private def evalRule[C: Context, O[_], R[_]](rule: Rule[C], relations: List[O[R[C]]])
+                                            (using op: IROp[C, O, R]): O[R[C]] =
   rule match
-    case rule: CombinationRule[T] => evalCombinationRule(rule, relations)
-    case rule: AggregationRule[T] => evalAggregationRule(rule, relations.head)
+    case rule: CombinationRule[C] => evalCombinationRule(rule, relations)
+    case rule: AggregationRule[C] => evalAggregationRule(rule, relations.head)
 
 // TODO : Document this.
-private def evalCombinationRule[O[_, _], R[_], T: Context](rule: CombinationRule[T], relations: List[O[T, R[T]]])
-                                                          (using op: IROp[O, R]): O[T, R[T]] =
+private def evalCombinationRule[C: Context, O[_], R[_]](rule: CombinationRule[C], relations: List[O[R[C]]])
+                                                       (using op: IROp[C, O, R]): O[R[C]] =
   if rule.body.size != relations.size then throw IllegalArgumentException("Invalid number of relations.")
   // 1. Negate all the relations that are negated in the rule.
   // 2. Generate a concatenation of all atoms in the rule, after the join.
@@ -66,13 +66,13 @@ private def evalCombinationRule[O[_, _], R[_], T: Context](rule: CombinationRule
     .project(projection(rule.head.terms, concat))
 
 // TODO : Document this.
-private def evalAggregationRule[O[_, _], R[_], T](rule: AggregationRule[T], relation: O[T, R[T]])
-                                                 (using op: IROp[O, R], context: Context[T]): O[T, R[T]] =
+private def evalAggregationRule[C, O[_], R[_]](rule: AggregationRule[C], relation: O[R[C]])
+                                              (using op: IROp[C, O, R], context: Context[C]): O[R[C]] =
   // 1. Negate the relation if the rule is negated.
   // 2. Perform the aggregation.
   val rel = if rule.clause.negated then negated(rule.clause.arity, relation) else relation
   val projection = rule.head.terms.map {
-    case term: Value[T] => AggregationColumnColumn(Constant(term))
+    case term: Value[C] => AggregationColumnColumn(Constant(term))
     case term: Variable =>
       if term == rule.aggregate.result then AggregationColumnAggregate
       else AggregationColumnColumn(Index(rule.clause.terms.indexOf(term)))
@@ -82,13 +82,13 @@ private def evalAggregationRule[O[_, _], R[_], T](rule: AggregationRule[T], rela
   rel.aggregate(projection, same, rule.aggregate.agg, indices)(using context.domain)
 
 // TODO : Document this.
-private def evalRuleIncremental[O[_, _], R[_], T: Context](rule: Rule[T],
-                                                           relations: List[O[T, R[T]]],
-                                                           incremental: List[O[T, R[T]]])
-                                                          (using op: IROp[O, R]): O[T, R[T]] =
+private def evalRuleIncremental[C: Context, O[_], R[_]](rule: Rule[C],
+                                                        relations: List[O[R[C]]],
+                                                        incremental: List[O[R[C]]])
+                                                       (using op: IROp[C, O, R]): O[R[C]] =
   if rule.body.size != relations.size then throw IllegalArgumentException("Invalid number of relations.")
   if rule.body.size != incremental.size then throw IllegalArgumentException("Invalid number of relations.")
-  var result = op.empty[T](rule.head.arity)
+  var result = op.empty(rule.head.arity)
   for i <- rule.body.indices do {
     val args = List.range(0, rule.body.size).map { it => if (it == i) incremental(it) else relations(it) }
     result = op.union(Set(result, evalRule(rule, args)))
@@ -96,17 +96,17 @@ private def evalRuleIncremental[O[_, _], R[_], T: Context](rule: Rule[T],
   result.distinct()
 
 // TODO : Document this.
-private def eval[O[_, _], R[_], T: Context](predicate: PredicateWithArity,
-                                            idb: RulesDatabase[T],
-                                            base: Database,
-                                            derived: Database)
-                                           (using op: IROp[O, R]): O[T, R[T]] =
+private def eval[C: Context, O[_], R[_]](predicate: PredicateWithArity,
+                                         idb: RulesDatabase[C],
+                                         base: Database,
+                                         derived: Database)
+                                        (using op: IROp[C, O, R]): O[R[C]] =
   val rules = idb(predicate)
-  var result = op.empty[T](predicate.arity)
+  var result = op.empty(predicate.arity)
   for rule <- rules do {
     val list = rule.body.map { it =>
-      val baseOp = op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
-      val derivedOp = op.scan[T](derived, PredicateWithArity(it.predicate, it.arity))
+      val baseOp = op.scan(base, PredicateWithArity(it.predicate, it.arity))
+      val derivedOp = op.scan(derived, PredicateWithArity(it.predicate, it.arity))
       op.union(Set(baseOp, derivedOp))
     }
     result = op.union(Set(result, evalRule(rule, list)))
@@ -114,24 +114,24 @@ private def eval[O[_, _], R[_], T: Context](predicate: PredicateWithArity,
   result.distinct()
 
 // TODO : Document this.
-private def evalIncremental[O[_, _], R[_], T: Context](predicate: PredicateWithArity,
-                                                       idb: RulesDatabase[T],
-                                                       base: Database,
-                                                       derived: Database,
-                                                       delta: Database)
-                                                      (using op: IROp[O, R]): O[T, R[T]] =
+private def evalIncremental[C: Context, O[_], R[_]](predicate: PredicateWithArity,
+                                                    idb: RulesDatabase[C],
+                                                    base: Database,
+                                                    derived: Database,
+                                                    delta: Database)
+                                                   (using op: IROp[C, O, R]): O[R[C]] =
   val rules = idb(predicate)
-  var result = op.empty[T](predicate.arity)
+  var result = op.empty(predicate.arity)
   for rule <- rules do {
     val baseList = rule.body.map { it =>
-      val baseOp = op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
-      val derivedOp = op.scan[T](derived, PredicateWithArity(it.predicate, it.arity))
+      val baseOp = op.scan(base, PredicateWithArity(it.predicate, it.arity))
+      val derivedOp = op.scan(derived, PredicateWithArity(it.predicate, it.arity))
       op.union(Set(baseOp, derivedOp))
     }
     val deltaList = rule.body.map { it =>
       // Negation needs base facts to be present in the delta.
-      val baseOp = op.scan[T](base, PredicateWithArity(it.predicate, it.arity))
-      val deltaOp = op.scan[T](delta, PredicateWithArity(it.predicate, it.arity))
+      val baseOp = op.scan(base, PredicateWithArity(it.predicate, it.arity))
+      val deltaOp = op.scan(delta, PredicateWithArity(it.predicate, it.arity))
       op.union(Set(baseOp, deltaOp))
     }
     result = op.union(Set(result, evalRuleIncremental(rule, baseList, deltaList)))
@@ -139,14 +139,14 @@ private def evalIncremental[O[_, _], R[_], T: Context](predicate: PredicateWithA
   result.distinct()
 
 // TODO : Document this.
-def naiveEval[O[_, _], R[_], T: Context](idb: RulesDatabase[T],
-                                         base: Database,
-                                         result: Database)
-                                        (using op: IROp[O, R]): O[T, Unit] =
+def naiveEval[C: Context, O[_], R[_]](idb: RulesDatabase[C],
+                                      base: Database,
+                                      result: Database)
+                                     (using op: IROp[C, O, R]): O[Unit] =
   val copy = Database("Copy")
-  val sequence = mutable.ListBuffer[O[T, Unit]]()
+  val sequence = mutable.ListBuffer[O[Unit]]()
   idb.iterator.foreach { predicate =>
-    sequence += op.store(copy, predicate, op.scan[T](result, predicate))
+    sequence += op.store(copy, predicate, op.scan(result, predicate))
   }
   idb.iterator.foreach { predicate =>
     val res = eval(predicate, idb, base, result)
@@ -159,12 +159,12 @@ def naiveEval[O[_, _], R[_], T: Context](idb: RulesDatabase[T],
   )
 
 // TODO : Document this.
-def semiNaiveEval[O[_, _], R[_], T: Context](idb: RulesDatabase[T], base: Database, result: Database)
-                                            (using op: IROp[O, R]): O[T, Unit] =
+def semiNaiveEval[C: Context, O[_], R[_]](idb: RulesDatabase[C], base: Database, result: Database)
+                                         (using op: IROp[C, O, R]): O[Unit] =
   val delta = Database("Delta")
   val copy = Database("Copy")
-  val outer = immutable.List.newBuilder[O[T, Unit]]
-  val inner = immutable.List.newBuilder[O[T, Unit]]
+  val outer = immutable.List.newBuilder[O[Unit]]
+  val inner = immutable.List.newBuilder[O[Unit]]
 
   idb.iterator.foreach { predicate =>
     val res = eval(predicate, idb, base, Database.Empty)
@@ -175,12 +175,12 @@ def semiNaiveEval[O[_, _], R[_], T: Context](idb: RulesDatabase[T], base: Databa
   idb.iterator.foreach { p => inner += op.store(copy, p, op.scan(delta, p)) }
   idb.iterator.foreach { p =>
     val facts = evalIncremental(p, idb, base, result, copy)
-    val existing = op.scan[T](result, p)
+    val existing = op.scan(result, p)
     inner += op.store(delta, p, facts.minus(existing))
   }
   idb.iterator.foreach { p =>
-    val current = op.scan[T](result, p)
-    val newFacts = op.scan[T](delta, p)
+    val current = op.scan(result, p)
+    val newFacts = op.scan(delta, p)
     inner += op.store(result, p, op.union(Set(current, newFacts)))
   }
 

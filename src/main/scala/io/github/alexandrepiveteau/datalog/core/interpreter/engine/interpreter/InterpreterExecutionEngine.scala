@@ -17,5 +17,5 @@ class InterpreterExecutionEngine[T] extends ContextExecutionEngine[T]:
                         context: Context[T]): Unit =
     given Context[T] = context
 
-    val eval = stratifiedEval[IROpInterpreter, TupleSet, T](target, idb, Base, Result)((i, e, r) => algorithm.evaluate(i, e, r))
+    val eval = stratifiedEval[T, [R] =>> IROpInterpreter[T, R], TupleSet](target, idb, Base, Result)((i, e, r) => algorithm.evaluate(i, e, r))
     eval(storage) 

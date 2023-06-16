@@ -64,45 +64,45 @@ case class SelectOp[C](relation: StagedOp[C, TupleSet[C]], selection: Set[Set[Co
  * An implementation of [[IROp]] which constructs a tree of [[StagedOp]]s. The tree can then be traversed and compiled
  * to perform multi-stage execution.
  */
-given StagedIROp: IROp[StagedOp, TupleSet] with
+given StagedIROp[C]: IROp[C, [R] =>> StagedOp[C, R], TupleSet] with
 
-  override def sequence[C](ops: List[StagedOp[C, Unit]]): StagedOp[C, Unit] =
+  override def sequence(ops: List[StagedOp[C, Unit]]): StagedOp[C, Unit] =
     SequenceOp(ops)
 
-  override def scan[C](database: Database,
-                       predicate: PredicateWithArity): StagedOp[C, TupleSet[C]] =
+  override def scan(database: Database,
+                    predicate: PredicateWithArity): StagedOp[C, TupleSet[C]] =
     ScanOp(database, predicate)
 
-  override def store[C](database: Database,
-                        predicate: PredicateWithArity,
-                        relation: StagedOp[C, TupleSet[C]]): StagedOp[C, Unit] =
+  override def store(database: Database,
+                     predicate: PredicateWithArity,
+                     relation: StagedOp[C, TupleSet[C]]): StagedOp[C, Unit] =
     StoreOp(database, predicate, relation)
 
-  override def doWhileNotEqual[C](op: StagedOp[C, Unit],
-                                  first: Database,
-                                  second: Database): StagedOp[C, Unit] =
+  override def doWhileNotEqual(op: StagedOp[C, Unit],
+                               first: Database,
+                               second: Database): StagedOp[C, Unit] =
     DoWhileNotEqualOp(op, first, second)
 
-  override def doWhileNonEmpty[C](op: StagedOp[C, Unit],
-                                  database: Database): StagedOp[C, Unit] =
+  override def doWhileNonEmpty(op: StagedOp[C, Unit],
+                               database: Database): StagedOp[C, Unit] =
     DoWhileNonEmptyOp(op, database)
 
-  override def mergeAndClear[C](): StagedOp[C, Unit] =
+  override def mergeAndClear(): StagedOp[C, Unit] =
     MergeAndClearOp()
 
-  override def empty[C](arity: Int): StagedOp[C, TupleSet[C]] =
+  override def empty(arity: Int): StagedOp[C, TupleSet[C]] =
     EmptyOp(arity)
 
-  override def domain[C](arity: Int, values: Set[Value[C]]): StagedOp[C, TupleSet[C]] =
+  override def domain(arity: Int, values: Set[Value[C]]): StagedOp[C, TupleSet[C]] =
     DomainOp(arity, values)
 
-  override def join[C](relations: List[StagedOp[C, TupleSet[C]]]): StagedOp[C, TupleSet[C]] =
+  override def join(relations: List[StagedOp[C, TupleSet[C]]]): StagedOp[C, TupleSet[C]] =
     JoinOp(relations)
 
-  override def union[C](relations: Set[StagedOp[C, TupleSet[C]]]): StagedOp[C, TupleSet[C]] =
+  override def union(relations: Set[StagedOp[C, TupleSet[C]]]): StagedOp[C, TupleSet[C]] =
     UnionOp(relations)
 
-  extension[C] (relation: StagedOp[C, TupleSet[C]])
+  extension (relation: StagedOp[C, TupleSet[C]])
 
     override def arity: StagedOp[C, Int] =
       ArityOp(relation)
@@ -248,4 +248,4 @@ given StorageManagerToExpr[T: Type : ToExpr]: ToExpr[StorageManager[T]] with
 
 extension (e: Expr.type)
   def ofSet[T](xs: Set[Expr[T]])(using Type[T])(using Quotes): Expr[Set[T]] =
-    '{ Set(${Varargs(xs.toSeq)}: _*) }
+    '{ Set(${ Varargs(xs.toSeq) }: _*) }

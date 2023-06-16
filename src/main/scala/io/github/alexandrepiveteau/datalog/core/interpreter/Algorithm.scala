@@ -6,20 +6,20 @@ import io.github.alexandrepiveteau.datalog.core.interpreter.ir.{Database, IROp}
 // TODO : Document this.
 sealed trait Algorithm {
   // TODO : Document this.
-  def evaluate[O[_, _], R[_], T: Context](idb: RulesDatabase[T], base: Database, result: Database)
-                                         (using op: IROp[O, R]): O[T, Unit]
+  def evaluate[C: Context, O[_], R[_]](idb: RulesDatabase[C], base: Database, result: Database)
+                                      (using op: IROp[C, O, R]): O[Unit]
 }
 
 // TODO : Document this.
 object Naive extends Algorithm {
-  override def evaluate[O[_, _], R[_], T: Context](idb: RulesDatabase[T], base: Database, result: Database)
-                                                  (using op: IROp[O, R]): O[T, Unit] =
+  def evaluate[C: Context, O[_], R[_]](idb: RulesDatabase[C], base: Database, result: Database)
+                                      (using op: IROp[C, O, R]): O[Unit] =
     naiveEval(idb, base, result)
 }
 
 // TODO : Document this.
 object SemiNaive extends Algorithm {
-  override def evaluate[O[_, _], R[_], T: Context](idb: RulesDatabase[T], base: Database, result: Database)
-                                                  (using op: IROp[O, R]): O[T, Unit] =
+  def evaluate[C: Context, O[_], R[_]](idb: RulesDatabase[C], base: Database, result: Database)
+                                      (using op: IROp[C, O, R]): O[Unit] =
     semiNaiveEval(idb, base, result)
 }
