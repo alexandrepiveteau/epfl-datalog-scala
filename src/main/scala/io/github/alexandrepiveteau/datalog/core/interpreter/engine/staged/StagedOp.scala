@@ -20,18 +20,18 @@ sealed trait StagedOp[C, O, R[_]]
 case class SequenceOp[C, R[_]](ops: List[StagedOp[C, Unit, R]]) extends StagedOp[C, Unit, R]
 
 case class ScanOp[C, R[_]](database: Database,
-                     predicate: PredicateWithArity) extends StagedOp[C, R[C], R]
+                           predicate: PredicateWithArity) extends StagedOp[C, R[C], R]
 
 case class StoreOp[C, R[_]](database: Database,
-                      predicate: PredicateWithArity,
-                      relation: StagedOp[C, R[C], R]) extends StagedOp[C, Unit, R]
+                            predicate: PredicateWithArity,
+                            relation: StagedOp[C, R[C], R]) extends StagedOp[C, Unit, R]
 
 case class DoWhileNotEqualOp[C, R[_]](op: StagedOp[C, Unit, R],
-                                first: Database,
-                                second: Database) extends StagedOp[C, Unit, R]
+                                      first: Database,
+                                      second: Database) extends StagedOp[C, Unit, R]
 
 case class DoWhileNonEmptyOp[C, R[_]](op: StagedOp[C, Unit, R],
-                                database: Database) extends StagedOp[C, Unit, R]
+                                      database: Database) extends StagedOp[C, Unit, R]
 
 case class MergeAndClearOp[C, R[_]]() extends StagedOp[C, Unit, R]
 
@@ -46,11 +46,11 @@ case class UnionOp[C, R[_]](relations: Set[StagedOp[C, R[C], R]]) extends Staged
 case class ArityOp[C, R[_]](relation: StagedOp[C, R[C], R]) extends StagedOp[C, Int, R]
 
 case class AggregateOp[C, R[_]](relation: StagedOp[C, R[C], R],
-                          projection: List[AggregationColumn[C]],
-                          same: Set[Index],
-                          aggregate: AggregationFunction,
-                          indices: Set[Index],
-                         )(using val domain: Domain[C]) extends StagedOp[C, R[C], R]
+                                projection: List[AggregationColumn[C]],
+                                same: Set[Index],
+                                aggregate: AggregationFunction,
+                                indices: Set[Index],
+                               )(using val domain: Domain[C]) extends StagedOp[C, R[C], R]
 
 case class MinusOp[C, R[_]](left: StagedOp[C, R[C], R], right: StagedOp[C, R[C], R]) extends StagedOp[C, R[C], R]
 
@@ -64,66 +64,66 @@ case class SelectOp[C, R[_]](relation: StagedOp[C, R[C], R], selection: Set[Set[
  * An implementation of [[IROp]] which constructs a tree of [[StagedOp]]s. The tree can then be traversed and compiled
  * to perform multi-stage execution.
  */
-given StagedIROp[C]: IROp[C, [R] =>> StagedOp[C, R, TupleSet], TupleSet] with
+given StagedIROp[C, R[_]]: IROp[C, [O] =>> StagedOp[C, O, R], R] with
 
-  override def sequence(ops: List[StagedOp[C, Unit, TupleSet]]): StagedOp[C, Unit, TupleSet] =
+  override def sequence(ops: List[StagedOp[C, Unit, R]]): StagedOp[C, Unit, R] =
     SequenceOp(ops)
 
   override def scan(database: Database,
-                    predicate: PredicateWithArity): StagedOp[C, TupleSet[C], TupleSet] =
+                    predicate: PredicateWithArity): StagedOp[C, R[C], R] =
     ScanOp(database, predicate)
 
   override def store(database: Database,
                      predicate: PredicateWithArity,
-                     relation: StagedOp[C, TupleSet[C], TupleSet]): StagedOp[C, Unit, TupleSet] =
+                     relation: StagedOp[C, R[C], R]): StagedOp[C, Unit, R] =
     StoreOp(database, predicate, relation)
 
-  override def doWhileNotEqual(op: StagedOp[C, Unit, TupleSet],
+  override def doWhileNotEqual(op: StagedOp[C, Unit, R],
                                first: Database,
-                               second: Database): StagedOp[C, Unit, TupleSet] =
+                               second: Database): StagedOp[C, Unit, R] =
     DoWhileNotEqualOp(op, first, second)
 
-  override def doWhileNonEmpty(op: StagedOp[C, Unit, TupleSet],
-                               database: Database): StagedOp[C, Unit, TupleSet] =
+  override def doWhileNonEmpty(op: StagedOp[C, Unit, R],
+                               database: Database): StagedOp[C, Unit, R] =
     DoWhileNonEmptyOp(op, database)
 
-  override def mergeAndClear(): StagedOp[C, Unit, TupleSet] =
+  override def mergeAndClear(): StagedOp[C, Unit, R] =
     MergeAndClearOp()
 
-  override def empty(arity: Int): StagedOp[C, TupleSet[C], TupleSet] =
+  override def empty(arity: Int): StagedOp[C, R[C], R] =
     EmptyOp(arity)
 
-  override def domain(arity: Int, values: Set[Value[C]]): StagedOp[C, TupleSet[C], TupleSet] =
+  override def domain(arity: Int, values: Set[Value[C]]): StagedOp[C, R[C], R] =
     DomainOp(arity, values)
 
-  override def join(relations: List[StagedOp[C, TupleSet[C], TupleSet]]): StagedOp[C, TupleSet[C], TupleSet] =
+  override def join(relations: List[StagedOp[C, R[C], R]]): StagedOp[C, R[C], R] =
     JoinOp(relations)
 
-  override def union(relations: Set[StagedOp[C, TupleSet[C], TupleSet]]): StagedOp[C, TupleSet[C], TupleSet] =
+  override def union(relations: Set[StagedOp[C, R[C], R]]): StagedOp[C, R[C], R] =
     UnionOp(relations)
 
-  extension (relation: StagedOp[C, TupleSet[C], TupleSet])
+  extension (relation: StagedOp[C, R[C], R])
 
-    override def arity: StagedOp[C, Int, TupleSet] =
+    override def arity: StagedOp[C, Int, R] =
       ArityOp(relation)
 
     override def aggregate(projection: List[AggregationColumn[C]],
                            same: Set[Index],
                            aggregate: AggregationFunction,
                            indices: Set[Index],
-                          )(using domain: Domain[C]): StagedOp[C, TupleSet[C], TupleSet] =
+                          )(using domain: Domain[C]): StagedOp[C, R[C], R] =
       AggregateOp(relation, projection, same, aggregate, indices)
 
-    override def minus(other: StagedOp[C, TupleSet[C], TupleSet]): StagedOp[C, TupleSet[C], TupleSet] =
+    override def minus(other: StagedOp[C, R[C], R]): StagedOp[C, R[C], R] =
       MinusOp(relation, other)
 
-    override def distinct(): StagedOp[C, TupleSet[C], TupleSet] =
+    override def distinct(): StagedOp[C, R[C], R] =
       DistinctOp(relation)
 
-    override def project(projection: List[Column[C]]): StagedOp[C, TupleSet[C], TupleSet] =
+    override def project(projection: List[Column[C]]): StagedOp[C, R[C], R] =
       ProjectOp(relation, projection)
 
-    override def select(selection: Set[Set[Column[C]]]): StagedOp[C, TupleSet[C], TupleSet] =
+    override def select(selection: Set[Set[Column[C]]]): StagedOp[C, R[C], R] =
       SelectOp(relation, selection)
 
 // COMPILATION OF THE IR TO AN EXPRESSION
