@@ -34,6 +34,7 @@ Coming soon !
 + Supports various datalog features
     - Naive and semi-naive evaluation
     - Stratified negation
+    - Interpreted and multi-staged evaluation
     - Aggregations (`min`, `max`, `sum` and `count`)
 + Parser for text-based datalog programs
 
